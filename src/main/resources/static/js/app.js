@@ -692,6 +692,10 @@ new Vue({
             this.currentPage = 'announcements';
         },
 
+        switchToLogPage() {
+            this.currentPage = 'logs';
+        },
+
         // 切换到首页
         switchToHomePage() {
             this.currentPage = 'home';

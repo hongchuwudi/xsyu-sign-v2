@@ -74,6 +74,11 @@ public class User implements Serializable {
     private LocalDateTime updatedAt;
 
     /**
+     * JWS续签时间
+     */
+    private LocalDateTime jwsRefreshedAt;
+
+    /**
      * 自动签到
      */
     private Boolean autoSign;

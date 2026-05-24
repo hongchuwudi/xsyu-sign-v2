@@ -221,6 +221,12 @@ Vue.component('redis-queue-page', {
                             <i class="fas fa-bullhorn text-xl mb-1"></i>
                             <span class="text-xs font-medium">公告</span>
                         </button>
+
+                        <button @click="$emit('go-to-logs')"
+                                class="flex flex-col items-center px-4 py-2 rounded-lg transition-colors text-pink-400 hover:bg-pink-50">
+                            <i class="fas fa-history text-xl mb-1"></i>
+                            <span class="text-xs font-medium">日志</span>
+                        </button>
                     </div>
                 </div>
             </nav>

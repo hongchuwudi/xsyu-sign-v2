@@ -22,4 +22,5 @@ public class UserVO {
     private String signDays;
     private String signStartTime;
     private String signEndTime;
+    private String jwsRefreshedAt;
 }

@@ -136,7 +136,8 @@
                     @sign-all-users="handleSignAllUsers"
                     @go-to-task-config="switchToTaskConfigPage"
                     @go-to-redis-queue="switchToRedisQueuePage"
-                    @go-to-announcements="switchToAnnouncementPage">
+                    @go-to-announcements="switchToAnnouncementPage"
+                    @go-to-logs="switchToLogPage">
         </admin-page>
 
         <!-- 定时任务配置页面 -->
@@ -150,7 +151,8 @@
                           @back-to-admin="switchToAdminPage"
                           @go-to-users="switchToAdminPage"
                           @go-to-redis-queue="switchToRedisQueuePage"
-                          @go-to-announcements="switchToAnnouncementPage">
+                          @go-to-announcements="switchToAnnouncementPage"
+                          @go-to-logs="switchToLogPage">
         </task-config-page>
 
         <!-- Redis 队列页面 -->
@@ -162,7 +164,8 @@
                             @loading-end="endLoading"
                             @go-to-users="switchToAdminPage"
                             @go-to-task-config="switchToTaskConfigPage"
-                          @go-to-announcements="switchToAnnouncementPage">
+                          @go-to-announcements="switchToAnnouncementPage"
+                          @go-to-logs="switchToLogPage">
         </redis-queue-page>
 
         <!-- 用户端底部导航 -->
@@ -178,8 +181,18 @@
                            @logout="handleLogout"
                            @go-to-users="switchToAdminPage"
                            @go-to-task-config="switchToTaskConfigPage"
-                           @go-to-redis-queue="switchToRedisQueuePage">
+                           @go-to-redis-queue="switchToRedisQueuePage"
+                           @go-to-logs="switchToLogPage">
         </announcement-page>
+
+        <!-- 操作日志页面 -->
+        <log-page v-else-if="currentPage === 'logs'"
+                  :is-loading="isLoading"
+                  @loading-start="startLoading"
+                  @loading-end="endLoading"
+                  @show-message="showMessage"
+                  @go-to-users="switchToAdminPage">
+        </log-page>
     </div>
 
     <!-- 签到详情模态框 -->
@@ -240,6 +253,7 @@
 <script src="js/components/TaskConfigPage.js"></script>
 <script src="js/components/RedisQueuePage.js"></script>
 <script src="js/components/AnnouncementPage.js"></script>
+<script src="js/components/LogPage.js"></script>
 <script src="js/components/HomePage.js"></script>
 <script src="js/components/BottomNav.js"></script>
 

@@ -118,10 +118,10 @@ Vue.component('user-profile-modal', {
                         <div>
                             <label class="block text-pink-700 text-sm font-medium mb-2">签到时间范围</label>
                             <div class="flex items-center gap-2">
-                                <input v-model="editForm.signStartTime" type="time" min="18:30"
+                                <input v-model="editForm.signStartTime" type="time" min="18:30" step="60"
                                        class="flex-1 px-3 py-2 border border-pink-200 rounded-lg focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
                                 <span class="text-pink-400">至</span>
-                                <input v-model="editForm.signEndTime" type="time" max="23:59"
+                                <input v-model="editForm.signEndTime" type="time" max="23:59" step="60"
                                        class="flex-1 px-3 py-2 border border-pink-200 rounded-lg focus:border-pink-400 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
                             </div>
                         </div>

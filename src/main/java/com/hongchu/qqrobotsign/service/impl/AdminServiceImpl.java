@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Collections;
@@ -44,6 +45,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
     @Autowired EmailService emailService;
     @Autowired BaseSignService baseSignService;
     @Autowired UserServiceImpl userService;
+    @Autowired com.hongchu.qqrobotsign.service.IOperationLogService operationLogService;
 
     @Override
     public IPage<UserVO> getUsersByPage(Page<User> page, String keyword, String filter) {
@@ -84,6 +86,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
                 .signStartTime(user.getSignStartTime() != null ? user.getSignStartTime().toString() : null)
                 .signEndTime(user.getSignEndTime() != null ? user.getSignEndTime().toString() : null)
                 .jws(StringUtils.isNotBlank(user.getJws()))
+                .jwsRefreshedAt(user.getJwsRefreshedAt() != null ? user.getJwsRefreshedAt().toString() : null)
                 .updatedAt(user.getUpdatedAt())
                 .build());
     }
@@ -103,6 +106,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
                         .signStartTime(user.getSignStartTime() != null ? user.getSignStartTime().toString() : null)
                         .signEndTime(user.getSignEndTime() != null ? user.getSignEndTime().toString() : null)
                         .jws(StringUtils.isNotBlank(user.getJws()))
+                        .jwsRefreshedAt(user.getJwsRefreshedAt() != null ? user.getJwsRefreshedAt().toString() : null)
                         .updatedAt(user.getUpdatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -110,22 +114,42 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
 
     @Override
     public void refreshUserJws(String username) {
+        long start = System.currentTimeMillis();
         log.info("service层-给用户续签JWS-username: {}", username);
         User user = this.getOne(new QueryWrapper<User>().eq("username", username));
-        if (user == null) throw new BusinessException("用户不存在,无法续签JWS");
+        if (user == null) {
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "管理员手动续签 - 用户不存在: " + username, "FAIL", "ADMIN", null, System.currentTimeMillis() - start);
+            throw new BusinessException("用户不存在,无法续签JWS");
+        }
 
         String pass = CryptoUtils.decrypt(new String(user.getPassword()));
         String jws = XSYULoginUtil.login(username, pass);
+        if (jws == null) {
+            long duration = System.currentTimeMillis() - start;
+            log.error("用户: {} CAS登录失败，无法续签JWS", username);
+            emailService.sendErrorJwsRefreshMes(user.getEmail(), username);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "管理员手动续签 - 用户: " + username + " CAS登录失败", "FAIL", "ADMIN", null, duration);
+            throw new BusinessException("JWS续签失败：CAS登录失败，请检查账号密码是否变更");
+        }
 
         LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(User::getUsername, username)
-                .set(User::getJws, jws);
+                .set(User::getJws, jws)
+                .set(User::getJwsRefreshedAt, LocalDateTime.now());
 
         boolean updated = this.update(updateWrapper);
-        if (updated) log.info("用户: {} 续签成功---JWS:{}", username, jws);
-        else {
+        long duration = System.currentTimeMillis() - start;
+        if (updated) {
+            log.info("用户: {} 续签成功---JWS:{}", username, jws);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "管理员手动续签 - 用户: " + username + " 续签成功", "SUCCESS", "ADMIN", null, duration);
+        } else {
             log.error("用户: {} 续签失败", username);
             emailService.sendErrorJwsRefreshMes(user.getEmail(), username);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "管理员手动续签 - 用户: " + username + " 数据库更新失败", "FAIL", "ADMIN", null, duration);
             throw new BusinessException("JWS更新失败");
         }
     }
@@ -222,6 +246,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
                 .signStartTime(user.getSignStartTime() != null ? user.getSignStartTime().toString() : null)
                 .signEndTime(user.getSignEndTime() != null ? user.getSignEndTime().toString() : null)
                 .jws(StringUtils.isNotBlank(user.getJws()))
+                .jwsRefreshedAt(user.getJwsRefreshedAt() != null ? user.getJwsRefreshedAt().toString() : null)
                 .updatedAt(user.getUpdatedAt())
                 .build();
     }
@@ -253,11 +278,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
         }
 
         // 1. 调用 XSYULoginUtil 登录获取 JWS
-        String jws = null;
-        for (int i = 0; i < 5 && jws == null; i++) {
-            Thread.sleep(10);
-            jws = XSYULoginUtil.login(userDTO.getUsername(), userDTO.getPassword());
-        }
+        String jws = XSYULoginUtil.login(userDTO.getUsername(), userDTO.getPassword());
         if (jws == null) throw new BusinessException("登录失败，请检查账号密码");
 
         // 2. 创建新用户
@@ -268,6 +289,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
         byte[] passwordBytes = CryptoUtils.encrypt(userDTO.getPassword()).getBytes();
         newUser.setPassword(passwordBytes);
         newUser.setJws(jws);
+        newUser.setJwsRefreshedAt(LocalDateTime.now());
         newUser.setName(userDTO.getName());
         newUser.setEmail(userDTO.getEmail());
         newUser.setAutoSign(userDTO.getAutoSign() != null ? userDTO.getAutoSign() : false);

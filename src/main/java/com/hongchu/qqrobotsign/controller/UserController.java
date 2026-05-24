@@ -1,5 +1,6 @@
 package com.hongchu.qqrobotsign.controller;
 
+import com.hongchu.qqrobotsign.annotation.LogRecord;
 import com.hongchu.qqrobotsign.config.props.RSAConfig;
 import com.hongchu.qqrobotsign.context.BaseContext;
 import com.hongchu.qqrobotsign.exception.BusinessException;
@@ -52,6 +53,7 @@ public class UserController {
      * @param loginDTO 登录参数（包含用户名和RSA加密后的密码）
      * @return 登录结果
      */
+    @LogRecord("用户登录")
     @PostMapping("/login")
     public Result<UserLoginVO> register(@RequestBody LoginDTO loginDTO) throws InterruptedException {
         log.info("controller层-登录用户名：{}，密码长度：{}", loginDTO.getUsername(),
@@ -107,6 +109,7 @@ public class UserController {
      * 退出登录（不删除数据库）
      * @return 退出登录结果
      */
+    @LogRecord("用户退出登录")
     @PostMapping("/logout")
     public Result<Void> logout() {
         log.info("controller层-退出登录-userId: {}", BaseContext.getCurrentId());

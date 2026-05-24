@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -50,6 +51,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Autowired AdminConfig adminConfig;
     @Autowired com.hongchu.qqrobotsign.config.props.RSAConfig rsaConfig;
     @Lazy @Autowired com.hongchu.qqrobotsign.webClient.BaseSignService baseSignService;
+    @Autowired com.hongchu.qqrobotsign.service.IOperationLogService operationLogService;
 
     // 登录
     @Override
@@ -107,6 +109,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
                 // 更新jws
                 user.setJws(jws);
+                user.setJwsRefreshedAt(LocalDateTime.now());
                 log.info("用户: {} 更新JWS成功---JWS:{}", username, jws);
 
                 // 更新数据库
@@ -130,6 +133,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             byte[] passwordBytes = CryptoUtils.encrypt(password).getBytes();
             user.setPassword(passwordBytes);
             user.setJws(jws);
+            user.setJwsRefreshedAt(LocalDateTime.now());
             this.save(user);
             // 保存后再查签到记录（getAllSign需要从DB读JWS）
             setDefaultSignTimes(user, username);
@@ -215,24 +219,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     // 刷新JWS
     @Override
     public void refreshJws(String username) {
-        // 1.检查是否有该用户
+        long start = System.currentTimeMillis();
         User user = this.getOne(new QueryWrapper<User>().eq("username", username));
-        // 2.如果有就全局返回错误
-        if (user == null) throw new BusinessException("用户不存在,无法续签JWS");
-        // 3. 获取JWS
+        if (user == null) {
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "用户不存在: " + username, "FAIL", "SYSTEM", null, System.currentTimeMillis() - start);
+            throw new BusinessException("用户不存在,无法续签JWS");
+        }
         String pass = CryptoUtils.decrypt(new String(user.getPassword()));
         String jws = XSYULoginUtil.login(username, pass);
-        // 4. 更新JWS - 修复部分
+        if (jws == null) {
+            long duration = System.currentTimeMillis() - start;
+            log.error("用户: {} CAS登录失败，无法续签JWS", username);
+            emailService.sendErrorJwsRefreshMes(user.getEmail(), username);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "用户: " + username + " CAS登录失败", "FAIL", "SYSTEM", null, duration);
+            throw new BusinessException("JWS续签失败：CAS登录失败，请检查账号密码是否变更");
+        }
         LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(User::getUsername, username)
-                .set(User::getJws, jws);
-        // 5.判断是否成功
+                .set(User::getJws, jws)
+                .set(User::getJwsRefreshedAt, LocalDateTime.now());
         boolean updated = this.update(updateWrapper);
-        if (updated) log.info("用户: {} 续签成功---JWS:{}", username, jws);
-        else {
-            log.error("用户: {} 续签失败", username);
-            // 5.1失败则通知自己
-            emailService.sendErrorJwsRefreshMes(user.getEmail(),username);
+        long duration = System.currentTimeMillis() - start;
+        if (updated) {
+            log.info("用户: {} 续签成功---JWS:{}", username, jws);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "用户: " + username + " 续签成功", "SUCCESS", "SYSTEM", null, duration);
+        } else {
+            log.error("用户: {} 续签失败，数据库更新失败", username);
+            emailService.sendErrorJwsRefreshMes(user.getEmail(), username);
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "用户: " + username + " 数据库更新失败", "FAIL", "SYSTEM", null, duration);
             throw new BusinessException("JWS更新失败");
         }
     }

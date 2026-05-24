@@ -28,8 +28,9 @@ public class SchedulingManager {
     @Autowired private SignService signService;
     @Autowired private IUserService userService;
     @Autowired private RedisTemplate<String, Object> redisTemplate;
+    @Autowired private com.hongchu.qqrobotsign.service.IOperationLogService operationLogService;
 
-    private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
+    private final Map<String, List<ScheduledFuture<?>>> scheduledTasks = new HashMap<>();
     private static final String DELAY_QUEUE = "sign:queue";
 
     @PostConstruct
@@ -64,8 +65,11 @@ public class SchedulingManager {
         }
 
         log.info("==================== 定时任务刷新完成，当前已注册 {} 个任务 ====================", scheduledTasks.size());
-        scheduledTasks.forEach((key, future) -> {
-            log.info("  已注册任务: {} -> isDone={}, isCancelled={}", key, future.isDone(), future.isCancelled());
+        scheduledTasks.forEach((key, futures) -> {
+            for (int i = 0; i < futures.size(); i++) {
+                ScheduledFuture<?> f = futures.get(i);
+                log.info("  已注册任务: {}[{}] -> isDone={}, isCancelled={}", key, i, f.isDone(), f.isCancelled());
+            }
         });
     }
 
@@ -86,10 +90,15 @@ public class SchedulingManager {
         }
 
         try {
-            ScheduledFuture<?> future = taskScheduler.schedule(task, new CronTrigger(config.getCronExpression()));
-            scheduledTasks.put(config.getTaskKey(), future);
-            log.info("✅✅✅ 任务注册成功: {} ({}), cron: {}, 下次执行时间不确定(需看cron解析)",
-                    config.getTaskName(), config.getTaskKey(), config.getCronExpression());
+            String[] crons = config.getCronExpression().split("\\|\\|");
+            List<ScheduledFuture<?>> futures = new ArrayList<>();
+            for (String cron : crons) {
+                ScheduledFuture<?> future = taskScheduler.schedule(task, new CronTrigger(cron.trim()));
+                futures.add(future);
+            }
+            scheduledTasks.put(config.getTaskKey(), futures);
+            log.info("✅✅✅ 任务注册成功: {} ({}), cron: {}, 共 {} 条",
+                    config.getTaskName(), config.getTaskKey(), config.getCronExpression(), crons.length);
         } catch (Exception e) {
             log.error("❌❌❌ 注册任务失败: {} - {}", config.getTaskKey(), e.getMessage(), e);
         }
@@ -102,10 +111,19 @@ public class SchedulingManager {
      */
     private void executeScheduleUsers() {
         log.info("📋📋📋 定时触发-调度用户签到!!! 线程: {}, 时间: {}", Thread.currentThread().getName(), new java.util.Date());
+        long start = System.currentTimeMillis();
         try {
             ((TaskConfigServiceImpl) taskConfigService).triggerImmediateSchedule(true);
+            long duration = System.currentTimeMillis() - start;
+            Long queueSize = redisTemplate.opsForZSet().size(DELAY_QUEUE);
+            operationLogService.save("SCHEDULE", "定时调度用户签到",
+                    String.format("调度完成，Redis队列当前共 %d 个待签到用户，耗时 %d ms", queueSize != null ? queueSize : 0, duration),
+                    "SUCCESS", "SYSTEM", null, duration);
             log.info("📋📋📋 调度用户签到-执行完成");
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - start;
+            operationLogService.save("SCHEDULE", "定时调度用户签到",
+                    "调度失败: " + e.getMessage(), "FAIL", "SYSTEM", null, duration);
             log.error("调度用户签到失败", e);
         }
     }
@@ -115,9 +133,9 @@ public class SchedulingManager {
      */
     private void executeIntervalSign() {
         log.info("⏰⏰⏰ 间隔签到-触发!!! 线程: {}, 时间: {}", Thread.currentThread().getName(), new java.util.Date());
+        long start = System.currentTimeMillis();
         try {
             long now = System.currentTimeMillis();
-            // 先查一下队列里有多少数据
             Long queueSize = redisTemplate.opsForZSet().size(DELAY_QUEUE);
             log.info("间隔签到-Redis队列总大小: {}, 当前时间戳: {}", queueSize, now);
 
@@ -128,6 +146,9 @@ public class SchedulingManager {
             }
 
             log.info("⏰⏰⏰ 定时触发-从Redis队列取出 {} 个待签到用户", readyUsers.size());
+            int successCount = 0;
+            int failCount = 0;
+            StringBuilder detail = new StringBuilder();
             for (Object obj : readyUsers) {
                 String username = obj.toString();
                 try {
@@ -135,11 +156,27 @@ public class SchedulingManager {
                     log.info("开始执行用户 {} 签到", username);
                     String result = signService.signAll(username);
                     log.info("用户 {} 签到结果: {}", username, result);
+                    successCount++;
+                    if (detail.length() < 800) {
+                        detail.append(username).append(" 签到成功; ");
+                    }
                 } catch (Exception e) {
+                    failCount++;
                     log.error("用户 {} 签到执行失败", username, e);
                 }
             }
+            if (successCount + failCount >= 10) {
+                detail.append("... 共 ").append(successCount + failCount).append(" 人");
+            }
+            long duration = System.currentTimeMillis() - start;
+            operationLogService.save("INTERVAL_SIGN", "间隔执行签到",
+                    String.format("队列总数: %d, 本次签到: 成功 %d 人, 失败 %d 人。%s",
+                            queueSize != null ? queueSize : 0, successCount, failCount, detail),
+                    failCount > 0 ? "PARTIAL" : "SUCCESS", "SYSTEM", null, duration);
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - start;
+            operationLogService.save("INTERVAL_SIGN", "间隔执行签到",
+                    "执行失败: " + e.getMessage(), "FAIL", "SYSTEM", null, duration);
             log.error("间隔签到执行失败", e);
         }
     }
@@ -149,6 +186,7 @@ public class SchedulingManager {
      */
     private void executeRefreshJws(TaskConfig config) {
         log.info("定时触发-JWS续签检查");
+        long start = System.currentTimeMillis();
         try {
             if (!((TaskConfigServiceImpl) taskConfigService).shouldRefreshJwsToday(config)) {
                 log.info("今天不是JWS续签日，跳过");
@@ -157,17 +195,30 @@ public class SchedulingManager {
 
             List<User> users = userService.list();
             log.info("开始续签 {} 个用户的JWS", users.size());
+            int successCount = 0;
+            int failCount = 0;
             for (User user : users) {
                 try {
                     userService.refreshJws(user.getUsername());
                     log.info("用户 {} JWS续签成功", user.getUsername());
+                    successCount++;
                     Thread.sleep(500);
                 } catch (Exception e) {
+                    failCount++;
                     log.error("用户 {} JWS续签失败", user.getUsername(), e);
                 }
             }
+            long duration = System.currentTimeMillis() - start;
+            String result = failCount > 0 ? "PARTIAL" : "SUCCESS";
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    String.format("续签完成: 成功 %d 人, 失败 %d 人, 总 %d 人, 耗时 %d ms",
+                            successCount, failCount, users.size(), duration),
+                    result, "SYSTEM", null, duration);
             log.info("JWS续签完成");
         } catch (Exception e) {
+            long duration = System.currentTimeMillis() - start;
+            operationLogService.save("JWS_REFRESH", "JWS续签",
+                    "续签执行失败: " + e.getMessage(), "FAIL", "SYSTEM", null, duration);
             log.error("JWS续签执行失败", e);
         }
     }
@@ -175,9 +226,13 @@ public class SchedulingManager {
     // ==================== 任务管理 ====================
 
     private void cancelAllTasks() {
-        scheduledTasks.forEach((name, future) -> {
-            if (future != null && !future.isCancelled()) {
-                future.cancel(false);
+        scheduledTasks.forEach((name, futures) -> {
+            if (futures != null) {
+                for (ScheduledFuture<?> future : futures) {
+                    if (!future.isCancelled()) {
+                        future.cancel(false);
+                    }
+                }
                 log.info("已取消任务: {}", name);
             }
         });
@@ -186,8 +241,10 @@ public class SchedulingManager {
 
     public Map<String, Boolean> getRunningTasks() {
         Map<String, Boolean> status = new LinkedHashMap<>();
-        scheduledTasks.forEach((name, future) ->
-                status.put(name, future != null && !future.isCancelled() && !future.isDone()));
+        scheduledTasks.forEach((name, futures) -> {
+            boolean allRunning = futures != null && futures.stream().allMatch(f -> !f.isCancelled() && !f.isDone());
+            status.put(name, allRunning);
+        });
         return status;
     }
 }

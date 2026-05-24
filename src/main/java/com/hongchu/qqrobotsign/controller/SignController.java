@@ -1,5 +1,6 @@
 package com.hongchu.qqrobotsign.controller;
 
+import com.hongchu.qqrobotsign.annotation.LogRecord;
 import com.hongchu.qqrobotsign.context.BaseContext;
 import com.hongchu.qqrobotsign.exception.BusinessException;
 import com.hongchu.qqrobotsign.pojo.DTO.SignDTO;
@@ -75,6 +76,7 @@ public class SignController {
      *
      * @return 签到结果
      */
+    @LogRecord("管理员为用户签到")
     @PostMapping("/all-admin/{username}")
     public String signByAdmin(@PathVariable String username) {
         log.info("controller层-签到-username: {}", username);
@@ -86,6 +88,7 @@ public class SignController {
      *
      * @return 签到结果
      */
+    @LogRecord("用户一键签到")
     @PostMapping("/all")
     public String sign() {
         User user = userService.getById(BaseContext.getCurrentId());

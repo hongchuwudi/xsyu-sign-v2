@@ -1,6 +1,6 @@
-﻿﻿// API 工具类
+﻿const API_BASE = 'http://localhost:11451'
+﻿// API 工具类
 // 创建 axios 实例
-const API_BASE = 'https://xsyusign.hongchu.xyz'
 function createRequest(jwt) {
     const instance = axios.create({
         baseURL: API_BASE,
@@ -274,5 +274,19 @@ const api = {
     clearRedisQueue(jwt) {
         const request = createRequest(jwt);
         return request.delete('/admin/redis-queue');
+    },
+
+    // ========== 操作日志接口 ==========
+
+    // 分页查询日志
+    getOperationLogs(jwt, params) {
+        const request = createRequest(jwt);
+        return request.get('/admin/operation-logs', { params });
+    },
+
+    // 批量删除日志
+    deleteOperationLogs(jwt, ids) {
+        const request = createRequest(jwt);
+        return request.delete('/admin/operation-logs', { data: { ids } });
     }
 };

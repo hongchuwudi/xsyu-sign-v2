@@ -185,6 +185,7 @@ Vue.component('admin-page', {
                                     <th class="px-2 py-3 text-left text-xs font-medium text-pink-700 w-20">姓名</th>
                                     <th class="px-2 py-3 text-center text-xs font-medium text-pink-700 w-16">签到</th>
                                     <th class="px-2 py-3 text-center text-xs font-medium text-pink-700 w-16">JWS</th>
+                                    <th class="px-2 py-3 text-center text-xs font-medium text-pink-700 w-20">续签时间</th>
                                     <th class="px-2 py-3 text-center text-xs font-medium text-pink-700">操作</th>
                                 </tr>
                             </thead>
@@ -203,6 +204,9 @@ Vue.component('admin-page', {
                                         <span :class="user.jws ? 'text-pink-500' : 'text-rose-400'" class="text-lg font-bold">
                                             {{ user.jws ? '✓' : '✗' }}
                                         </span>
+                                    </td>
+                                    <td class="px-2 py-3 text-center text-xs text-pink-600">
+                                        {{ formatDateOnly(user.jwsRefreshedAt) || '-' }}
                                     </td>
                                     <td class="px-2 py-3">
                                         <div class="flex items-center justify-center space-x-2">
@@ -291,6 +295,13 @@ Vue.component('admin-page', {
                                 :class="$parent.currentPage === 'announcements' ? 'text-pink-500 bg-pink-50' : 'text-pink-400 hover:bg-pink-50'">
                             <i class="fas fa-bullhorn text-xl mb-1"></i>
                             <span class="text-xs font-medium">公告</span>
+                        </button>
+
+                        <button @click="$emit('go-to-logs')"
+                                class="flex flex-col items-center px-4 py-2 rounded-lg transition-colors"
+                                :class="$parent.currentPage === 'logs' ? 'text-pink-500 bg-pink-50' : 'text-pink-400 hover:bg-pink-50'">
+                            <i class="fas fa-history text-xl mb-1"></i>
+                            <span class="text-xs font-medium">日志</span>
                         </button>
                     </div>
                 </div>
@@ -383,10 +394,10 @@ Vue.component('admin-page', {
                         <div>
                             <label class="block text-gray-700 text-sm font-medium mb-2">签到时间范围</label>
                             <div class="flex items-center gap-2">
-                                <input v-model="editForm.signStartTime" type="time" min="18:30"
+                                <input v-model="editForm.signStartTime" type="time" min="18:30" step="60"
                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none text-sm">
                                 <span class="text-gray-400">至</span>
-                                <input v-model="editForm.signEndTime" type="time" max="23:59"
+                                <input v-model="editForm.signEndTime" type="time" max="23:59" step="60"
                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none text-sm">
                             </div>
                         </div>
@@ -452,6 +463,12 @@ Vue.component('admin-page', {
                             <span class="text-pink-600">JWS 状态</span>
                             <span :class="userDetail?.jws ? 'text-rose-500' : 'text-fuchsia-500'" class="font-medium">
                                 {{ userDetail?.jws ? '有效' : '失效' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between py-2 border-b border-pink-100">
+                            <span class="text-fuchsia-600">JWS 续签时间</span>
+                            <span class="font-medium text-pink-800">
+                                {{ formatDateTime(userDetail?.jwsRefreshedAt) || '暂无' }}
                             </span>
                         </div>
                         <div class="flex justify-between py-2 border-b border-pink-100">
@@ -778,6 +795,18 @@ Vue.component('admin-page', {
         isAddPresetActive(preset) {
             return preset.value.length === this.addSignDaysConfig.length &&
                    preset.value.every(v => this.addSignDaysConfig.includes(v));
+        },
+        formatDateTime(dt) {
+            if (!dt) return '';
+            const d = new Date(dt);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        },
+        formatDateOnly(dt) {
+            if (!dt) return '';
+            const d = new Date(dt);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         },
         formatSignDays(signDays) {
             if (!signDays) return '每天';

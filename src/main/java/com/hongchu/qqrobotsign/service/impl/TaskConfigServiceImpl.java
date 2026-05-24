@@ -202,30 +202,31 @@ public class TaskConfigServiceImpl extends ServiceImpl<TaskConfigMapper, TaskCon
 
     /**
      * 构建间隔执行的Cron
-     * 格式: 0 startMinute-endMinute/interval startHour-endHour * * ?
-     * 支持精确到分钟的间隔执行
+     * 当 startMinute > 0 且跨度多个小时时，拆成两个 cron 用 || 连接：
+     * - 第一个小时：从 startMinute 开始
+     * - 后续小时：从第 0 分钟开始
      */
     private String buildIntervalCron(TaskConfigDTO.IntervalConfig config) {
         if (config == null) {
             log.warn("intervalConfig为null");
             return null;
         }
-        // 使用用户设置的结束分钟，如果为null则使用默认值
         Integer startMinute = config.getStartMinute() != null ? config.getStartMinute() : 0;
         Integer endMinute = config.getEndMinute() != null ? config.getEndMinute() : 59;
         Integer intervalMinutes = config.getIntervalMinutes() != null ? config.getIntervalMinutes() : 1;
         Integer startHour = config.getStartHour() != null ? config.getStartHour() : 18;
         Integer endHour = config.getEndHour() != null ? config.getEndHour() : 20;
-        
+
         log.info("构建间隔执行Cron - startMinute: {}, endMinute: {}, intervalMinutes: {}, startHour: {}, endHour: {}",
                 startMinute, endMinute, intervalMinutes, startHour, endHour);
-        
+
+        if (startMinute > 0 && endHour > startHour) {
+            return String.format("0 %d-%d/%d %d %d * * ?||0 %d-%d/%d %d-%d * * ?",
+                    startMinute, endMinute, intervalMinutes, startHour, startHour,
+                    0, endMinute, intervalMinutes, startHour + 1, endHour);
+        }
         return String.format("0 %d-%d/%d %d-%d * * ?",
-                startMinute,
-                endMinute,
-                intervalMinutes,
-                startHour,
-                endHour);
+                startMinute, endMinute, intervalMinutes, startHour, endHour);
     }
 
     /**
@@ -245,8 +246,7 @@ public class TaskConfigServiceImpl extends ServiceImpl<TaskConfigMapper, TaskCon
             return null;
         }
 
-        String[] parts = cron.split(" ");
-        if (parts.length != 7 && parts.length != 6) {
+        String[] parts = cron.split(" ");        if (parts.length != 7 && parts.length != 6) {
             return null;
         }
 
@@ -260,22 +260,8 @@ public class TaskConfigServiceImpl extends ServiceImpl<TaskConfigMapper, TaskCon
                         .daysOfWeek(parts[5]);
                 break;
             case "interval_sign":
-                // 0 startMinute-endMinute/interval startHour-endHour * * ?
-                String minuteRange = parts[1];
-                String[] hourRange = parts[2].split("-");
-                
-                // 解析分钟范围，格式为 start-end/interval
-                String[] minuteParts = minuteRange.split("/");
-                String interval = minuteParts.length > 1 ? minuteParts[1] : "1";
-                String[] startEndMinutes = minuteParts[0].split("-");
-                String startMinute = startEndMinutes[0];
-                String endMinute = startEndMinutes.length > 1 ? startEndMinutes[1] : "59";
-                
-                builder.interval(interval)
-                        .startHour(hourRange[0])
-                        .startMinute(startMinute)
-                        .endHour(hourRange[1])
-                        .endMinute(endMinute);
+                // 取第一段 cron 的 startHour/startMinute，取最后一段的 endHour/endMinute
+                parseIntervalCronForDisplay(cron, builder);
                 break;
             case "refresh_jws":
                 // 0 mm HH * * ?
@@ -285,6 +271,38 @@ public class TaskConfigServiceImpl extends ServiceImpl<TaskConfigMapper, TaskCon
         }
 
         return builder.build();
+    }
+
+    /**
+     * 解析 interval_sign 的 cron 用于前端展示。
+     * 若是 || 分隔的两段 cron，start 取第一段，end 取最后一段，保证展示完整时间范围。
+     */
+    private void parseIntervalCronForDisplay(String cron, TaskConfigVO.ParsedCron.ParsedCronBuilder builder) {
+        String[] crons = cron.split("\\|\\|");
+        String firstCron = crons[0].trim();
+        String lastCron = crons[crons.length - 1].trim();
+
+        // 解析第一段：取 startHour, startMinute, interval
+        String[] firstParts = firstCron.split(" ");
+        String minuteRange = firstParts[1];
+        String[] firstHourRange = firstParts[2].split("-");
+        String[] minuteParts = minuteRange.split("/");
+        String interval = minuteParts.length > 1 ? minuteParts[1] : "1";
+        String[] startEndMinutes = minuteParts[0].split("-");
+        String startMinute = startEndMinutes[0];
+
+        // 解析最后一段：取 endHour, endMinute
+        String[] lastParts = lastCron.split(" ");
+        String lastMinuteRange = lastParts[1];
+        String[] lastHourRange = lastParts[2].split("-");
+        String[] lastStartEndMinutes = lastMinuteRange.split("/")[0].split("-");
+        String endMinute = lastStartEndMinutes.length > 1 ? lastStartEndMinutes[1] : "59";
+
+        builder.interval(interval)
+                .startHour(firstHourRange[0])
+                .startMinute(startMinute)
+                .endHour(lastHourRange[lastHourRange.length - 1])
+                .endMinute(endMinute);
     }
 
     private TaskConfigVO convertToVO(TaskConfig config) {
@@ -400,6 +418,11 @@ public class TaskConfigServiceImpl extends ServiceImpl<TaskConfigMapper, TaskCon
 
             int delayMinutes = 1 + random.nextInt(delayRange);
             long executeTime = baseMillis + (delayMinutes * 60L * 1000);
+            // 如果调度触发晚了，计算出的执行时间已经过去，则从现在开始重新计算延迟
+            long now = System.currentTimeMillis();
+            if (executeTime < now) {
+                executeTime = now + (1 + random.nextInt(delayRange)) * 60L * 1000;
+            }
             // 不能超过签到结束时间
             if (executeTime > endMillis) executeTime = endMillis;
             String formattedTime = sdf.format(new Date(executeTime));
