@@ -18,9 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * <p>
- * 签到表 前端控制器
- * </p>
+ * 签到管理
  *
  * @author hongchu
  * @since 2025-11-18

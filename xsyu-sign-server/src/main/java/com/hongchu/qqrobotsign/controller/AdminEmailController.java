@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 管理员邮件通知管理
+ */
 @RestController
 @RequestMapping("/admin/email")
 @RequiredArgsConstructor

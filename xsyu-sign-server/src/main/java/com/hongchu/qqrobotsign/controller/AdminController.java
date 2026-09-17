@@ -17,9 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * <p>
- * 管理员-用户管理 前端控制器
- * </p>
+ * 管理员用户管理
  *
  * @author hongchu
  * @since 2025-11-23

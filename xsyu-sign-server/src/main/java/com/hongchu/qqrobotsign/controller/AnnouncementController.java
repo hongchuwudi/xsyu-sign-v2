@@ -11,9 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * <p>
- * 公告 前端控制器
- * </p>
+ * 公告管理
  *
  * @author hongchu
  * @since 2025-11-18

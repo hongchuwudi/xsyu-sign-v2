@@ -10,9 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * <p>
- * Redis 队列 前端控制器
- * </p>
+ * 管理员 Redis 队列管理
  *
  * @author hongchu
  * @since 2025-11-18

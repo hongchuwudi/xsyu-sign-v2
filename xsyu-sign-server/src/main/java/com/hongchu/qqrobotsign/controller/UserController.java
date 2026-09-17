@@ -26,9 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * <p>
- * 用户表 前端控制器
- * </p>
+ * 用户认证与账户管理
  *
  * @author hongchu
  * @since 2025-11-17
