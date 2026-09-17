@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `user_group` (
 CREATE TABLE IF NOT EXISTS `user_group_member` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `group_id` BIGINT NOT NULL,
-    `user_id` BIGINT NOT NULL,
+    `user_id` BIGINT UNSIGNED NOT NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS `email_notification_task` (
 CREATE TABLE IF NOT EXISTS `email_task_recipient` (
     `id` BIGINT NOT NULL AUTO_INCREMENT,
     `task_id` BIGINT NOT NULL,
-    `user_id` BIGINT NOT NULL,
+    `user_id` BIGINT UNSIGNED NOT NULL,
     `username` VARCHAR(100) NOT NULL,
     `name` VARCHAR(100) DEFAULT NULL,
     `email` VARCHAR(255) NOT NULL,
