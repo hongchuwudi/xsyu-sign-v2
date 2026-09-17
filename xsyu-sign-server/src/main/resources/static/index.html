@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="油签机系统 - 西安石油大学校园签到辅助工具，支持自动签到和手动签到">
+    <title>油签机系统</title>
+    <!-- Vue 2 -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="./js/utils/tailwind.3.4.17.min.js"></script>
+    <!-- Axios -->
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- CryptoJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- JSEncrypt (RSA加密) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.3.2/jsencrypt.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- highlight.js 代码高亮 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-box {
+            background: white;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+            z-index: 1001;
+        }
+        #app {
+            min-height: 100vh;
+        }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+        @keyframes slide-up {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-up {
+            animation: slide-up 0.25s ease-out;
+        }
+        @media (min-width: 640px) {
+            @keyframes slide-up-desktop {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .animate-slide-up {
+                animation: slide-up-desktop 0.2s ease-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+<div id="app">
+    <!-- 登录页面 -->
+    <login-page v-if="!isLoggedIn"
+                :is-loading="isLoading"
+                :error="error"
+                :qr-session="qrSession"
+                :sms-countdown="smsCountdown"
+                :captcha-session="captchaSession"
+                @xsy-login="handleXsyLogin"
+                @sms-send="handleSmsSend"
+                @sms-login="handleSmsLogin"
+                @qr-create="handleQrCreate">
+    </login-page>
+
+    <!-- 主界面 -->
+    <div v-else class="min-h-screen flex flex-col pb-14">
+        <!-- 首页 -->
+        <home-page v-if="currentPage === 'home'"></home-page>
+        <!-- 用户签到页面 -->
+        <template v-else-if="currentPage === 'user'">
+            <!-- 顶部导航 -->
+            <header-nav :user-info="userInfo"
+                        :show-user-menu="showUserMenu"
+                        @toggle-menu="toggleUserMenu"
+                        @edit-profile="openEditProfile"
+                        @toggle-auto-sign="handleToggleAutoSign"
+                        @bind-xsy="openBindModal"
+                        @open-about="openAbout"
+                        @logout="handleLogout"
+                        @unregister-confirm="showUnregisterConfirm">
+            </header-nav>
+            <!-- 主要内容 -->
+            <main class="flex-1 container mx-auto px-4 py-6">
+                <sign-list :signs="signs"
+                           :is-loading="isLoading"
+                           :current-page="signCurrentPage"
+                           :total-pages="totalPages"
+                           :pending-count="pendingCount"
+                           @refresh="getAllSigns"
+                           @one-key-sign="handleOneKeySign"
+                           @view-detail="openSignDetail"
+                           @sign-single="handleSignSingle"
+                           @prev-page="prevPage"
+                           @next-page="nextPage">
+                </sign-list>
+            </main>
+        </template>
+        <!-- 管理员页面 -->
+        <admin-page v-else-if="currentPage === 'admin'"
+                    :is-loading="isLoading"
+                    :users="users"
+                    :total="total"
+                    :stats="adminStats"
+                    :current-page="adminCurrentPage"
+                    @logout="handleLogout"
+                    @refresh-users="getAllUsers"
+                    @delete-user="handleDeleteUser"
+                    @refresh-jws="handleRefreshUserJws"
+                    @edit-user="handleEditUser"
+                    @change-page="handleAdminPageChange"
+                    @change-filter="handleAdminFilterChange"
+                    @get-user-detail="handleGetUserDetail"
+                    @get-user-signs="handleGetUserSigns"
+                    @search="handleAdminSearch"
+                    @toggle-auto-sign="handleToggleUserAutoSign"
+                    @add-user="handleAddUser"
+                    @sign-user="handleSignUser"
+                    @sign-all-users="handleSignAllUsers"
+                    @go-to-task-config="switchToTaskConfigPage"
+                    @go-to-redis-queue="switchToRedisQueuePage"
+                    @go-to-announcements="switchToAnnouncementPage"
+                    @go-to-logs="switchToLogPage">
+        </admin-page>
+        <!-- 定时任务配置页面 -->
+        <task-config-page v-else-if="currentPage === 'task-config'"
+                          :is-loading="isLoading"
+                          :task-configs="taskConfigs"
+                          @logout="handleLogout"
+                          @refresh-task-configs="getTaskConfigs"
+                          @update-task-config="handleUpdateTaskConfig"
+                          @immediate-schedule="handleImmediateSchedule"
+                          @back-to-admin="switchToAdminPage"
+                          @go-to-users="switchToAdminPage"
+                          @go-to-redis-queue="switchToRedisQueuePage"
+                          @go-to-announcements="switchToAnnouncementPage"
+                          @go-to-logs="switchToLogPage">
+        </task-config-page>
+        <!-- Redis 队列页面 -->
+        <redis-queue-page v-else-if="currentPage === 'redis-queue'"
+                            :is-loading="isLoading"
+                            @logout="handleLogout"
+                            @show-message="showMessage"
+                            @loading-start="startLoading"
+                            @loading-end="endLoading"
+                            @go-to-users="switchToAdminPage"
+                            @go-to-task-config="switchToTaskConfigPage"
+                          @go-to-announcements="switchToAnnouncementPage"
+                          @go-to-logs="switchToLogPage">
+        </redis-queue-page>
+        <!-- 用户端底部导航 -->
+        <bottom-nav v-if="currentPage==='home' || currentPage==='user'"
+                    :current-page="currentPage"
+                    @go-home="switchToHomePage"
+                    @go-signs="switchToUserPage">
+        </bottom-nav>
+        <!-- 公告管理页面 -->
+        <announcement-page v-else-if="currentPage === 'announcements'"
+                           :is-loading="isLoading"
+                           @logout="handleLogout"
+                           @go-to-users="switchToAdminPage"
+                           @go-to-task-config="switchToTaskConfigPage"
+                           @go-to-redis-queue="switchToRedisQueuePage"
+                           @go-to-logs="switchToLogPage">
+        </announcement-page>
+        <!-- 操作日志页面 -->
+        <log-page v-else-if="currentPage === 'logs'"
+                  :is-loading="isLoading"
+                  @loading-start="startLoading"
+                  @loading-end="endLoading"
+                  @show-message="showMessage"
+                  @go-to-users="switchToAdminPage">
+        </log-page>
+    </div>
+    <!-- 签到详情模态框 -->
+    <sign-detail-modal :visible="showDetailModal"
+                       :sign="selectedSign"
+                       @close="closeSignDetail"
+                       @sign="handleSignSingle">
+    </sign-detail-modal>
+    <!-- 个人资料编辑模态框 -->
+    <user-profile-modal :visible="showEditProfileModal"
+                        :user-info="userInfo"
+                        @close="closeEditProfile"
+                        @save="handleUpdateUserInfo">
+    </user-profile-modal>
+    <!-- 关于软件模态框 -->
+    <about-modal :visible="showAboutModal"
+                 @close="closeAbout">
+    </about-modal>
+    <!-- 注销信息确认模态框 -->
+    <unregister-confirm-modal :visible="showUnregisterConfirmModal"
+                             @close="closeUnregisterConfirm"
+                             @confirm="handleUnregister">
+    </unregister-confirm-modal>
+    <!-- 更新学校密码模态框 -->
+    <bind-xsy-modal :visible="showBindModal"
+                    :is-loading="isLoading"
+                    :captcha-session="captchaSession"
+                    :username="userInfo.username"
+                    @close="closeBindModal"
+                    @bind-password="handleBindByPassword">
+    </bind-xsy-modal>
+    <!-- 消息提示 -->
+    <div v-if="message"
+         :class="messageType === 'success' ? 'bg-rose-400' : 'bg-pink-400'"
+         class="fixed top-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg z-50 max-w-md">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <i :class="messageType === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"
+                   class="mr-2"></i>
+                {{ message }}
+            </div>
+            <button @click="message = ''" class="ml-4 hover:opacity-80">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 工具类 -->
+<script src="js/utils/crypto.js"></script>
+<script src="js/utils/api.js"></script>
+
+<!-- 组件 -->
+<script src="js/components/BaseModal.js"></script>
+<script src="js/components/LoginPage.js"></script>
+<script src="js/components/BindXsyModal.js"></script>
+<script src="js/components/HeaderNav.js"></script>
+<script src="js/components/SignList.js"></script>
+<script src="js/components/SignDetailModal.js"></script>
+<script src="js/components/UserProfileModal.js"></script>
+<script src="js/components/AboutModal.js"></script>
+<script src="js/components/UnregisterConfirmModal.js"></script>
+<script src="js/components/AdminPage.js"></script>
+<script src="js/components/TaskConfigPage.js"></script>
+<script src="js/components/RedisQueuePage.js"></script>
+<script src="js/components/AnnouncementPage.js"></script>
+<script src="js/components/LogPage.js"></script>
+<script src="js/components/HomePage.js"></script>
+<script src="js/components/BottomNav.js"></script>
+
+<!-- 主应用 -->
+<script src="js/app.js"></script>
+</body>
+</html>

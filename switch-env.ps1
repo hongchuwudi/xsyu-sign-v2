@@ -1,16 +1,21 @@
-# Environment Switch Script
+# Environment Switch Script (Monorepo)
 # Usage: .\switch-env.ps1 [dev|test|prod|prods]
 # If no parameter provided, interactive mode will be used
+# 作用：
+#   1. 切换后端 xsyu-sign-server 的 application.yml active profile
+#   2. 切换旧前端(static/js)的 API_BASE（过渡期）
+#   3. 写入新前端 xsyu-sign-web/.env.production 的 VITE_API_BASE
 
 param(
     [string]$env = ""
 )
 
-# Project paths
-$projectPath = $PSScriptRoot
-$envFile = "$projectPath\.env"
-$applicationYml = "$projectPath\src\main\resources\application.yml"
-$apiJs = "$projectPath\src\main\resources\static\js\utils\api.js"
+# Monorepo paths
+$root = $PSScriptRoot
+$envFile = "$root\.env"
+$applicationYml = "$root\xsyu-sign-server\src\main\resources\application.yml"
+$apiJs = "$root\xsyu-sign-server\src\main\resources\static\js\utils\api.js"
+$webEnv = "$root\xsyu-sign-web\.env.production"
 
 # Check if .env file exists
 if (-not (Test-Path $envFile)) {
@@ -78,10 +83,10 @@ Write-Host ""
 # ==================== Modify application.yml ====================
 if (Test-Path $applicationYml) {
     $content = Get-Content $applicationYml -Raw -Encoding UTF8
-    
+
     # Set the correct active profile (match 'active:' at the beginning of a line with optional whitespace)
     $content = $content -replace "(?m)^([ \t]*)active:.*$", "`$1active: $backendActive"
-    
+
     # Save file
     $content | Set-Content $applicationYml -Encoding UTF8 -NoNewline
     Write-Host "  [OK] application.yml updated" -ForegroundColor Green
@@ -89,15 +94,15 @@ if (Test-Path $applicationYml) {
     Write-Host "  [FAIL] File not found: $applicationYml" -ForegroundColor Red
 }
 
-# ==================== Modify api.js ====================
+# ==================== Modify old frontend api.js (transition period) ====================
 if (Test-Path $apiJs) {
     $content = Get-Content $apiJs -Raw -Encoding UTF8
-    
+
     # Delete any existing const API_BASE line and add the new one at the beginning
     $lines = $content -split "`n"
     $newLines = @()
     $apiBaseAdded = $false
-    
+
     foreach ($line in $lines) {
         # Skip any existing const API_BASE line (commented or not)
         if ($line -match "^\s*(//\s*)?const API_BASE\s*=") {
@@ -106,7 +111,7 @@ if (Test-Path $apiJs) {
         }
         $newLines += $line
     }
-    
+
     # Add the new API_BASE at the beginning (after any comments at the top)
     $finalLines = @()
     $added = $false
@@ -118,19 +123,27 @@ if (Test-Path $apiJs) {
         }
         $finalLines += $line
     }
-    
+
     # If not added yet (file might be empty or all comments), add at the end
     if (-not $added) {
         $finalLines = @("const API_BASE = '$apiBase'") + $finalLines
     }
-    
+
     $content = $finalLines -join "`n"
-    
+
     # Save file
     $content | Set-Content $apiJs -Encoding UTF8 -NoNewline
-    Write-Host "  [OK] api.js updated" -ForegroundColor Green
+    Write-Host "  [OK] old frontend api.js updated" -ForegroundColor Green
 } else {
-    Write-Host "  [FAIL] File not found: $apiJs" -ForegroundColor Red
+    Write-Host "  [SKIP] old frontend api.js not found (已退役可忽略)" -ForegroundColor DarkGray
+}
+
+# ==================== Write new frontend .env.production ====================
+if (Test-Path "$root\xsyu-sign-web") {
+    "VITE_API_BASE=$apiBase" | Set-Content $webEnv -Encoding UTF8 -NoNewline
+    Write-Host "  [OK] xsyu-sign-web/.env.production updated" -ForegroundColor Green
+} else {
+    Write-Host "  [FAIL] xsyu-sign-web not found" -ForegroundColor Red
 }
 
 Write-Host ""
@@ -152,14 +165,24 @@ if ($appContent -match "(?m)^[ \t]*active:\s*(\w+)") {
     Write-Host "  application.yml : active = $currentProfile" -ForegroundColor $color
 }
 
-# Show API_BASE from api.js
-$apiContent = Get-Content $apiJs -Raw
-if ($apiContent -match "(?m)^\s*const API_BASE\s*=\s*'([^']+)'") {
-    $currentApi = $matches[1]
-    $color = if ($currentApi -eq $apiBase) { "Green" } else { "Red" }
-    Write-Host "  api.js          : API_BASE = $currentApi" -ForegroundColor $color
-} else {
-    Write-Host "  api.js          : API_BASE = (not found)" -ForegroundColor Red
+# Show API_BASE from old api.js
+if (Test-Path $apiJs) {
+    $apiContent = Get-Content $apiJs -Raw
+    if ($apiContent -match "(?m)^\s*const API_BASE\s*=\s*'([^']+)'") {
+        $currentApi = $matches[1]
+        $color = if ($currentApi -eq $apiBase) { "Green" } else { "Red" }
+        Write-Host "  old api.js      : API_BASE = $currentApi" -ForegroundColor $color
+    }
+}
+
+# Show VITE_API_BASE from new frontend .env.production
+if (Test-Path $webEnv) {
+    $webContent = Get-Content $webEnv -Raw
+    if ($webContent -match "VITE_API_BASE=(\S+)") {
+        $currentWebApi = $matches[1]
+        $color = if ($currentWebApi -eq $apiBase) { "Green" } else { "Red" }
+        Write-Host "  web .env.prod   : VITE_API_BASE = $currentWebApi" -ForegroundColor $color
+    }
 }
 
 Write-Host "------------------------------------------"

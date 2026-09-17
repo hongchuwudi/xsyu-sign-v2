@@ -1,0 +1,59 @@
+﻿server:
+  port: 11451
+
+spring:
+  application:
+      name: qq-robot-service
+  # 配置文件
+  profiles:
+    active: dev
+    include: signInfo # 包含文件
+  #数据库
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${hc.datasource.host}:${hc.datasource.port}/${hc.datasource.db}?serverTimezone=Asia/Shanghai&useSSL=false&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: ${hc.datasource.username}
+    password: ${hc.datasource.password}
+  #redis
+  data:
+    redis:
+      host: ${hc.redis.host}
+      port: ${hc.redis.port}
+      password: ${hc.redis.password}
+      database: ${hc.redis.db}
+      lettuce:
+        pool:
+          max-active: 8     # 最大连接数
+          max-wait: -1ms    # 最大阻塞时间，记住使用ms单位
+          max-idle: 8       # 最大空闲连接数
+          min-idle: 0       # 最小空闲连接数
+  # 邮件
+  mail:
+    host: smtp.qq.com  # 以QQ邮箱为例
+    port: 587
+    username: ${hc.mail.username}   # 发件邮箱
+    password: ${hc.mail.password}   # 授权码，不是登录密码
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# 日志
+logging:
+  config: classpath:logback-spring.xml  # 指定使用我们的logback配置
+
+# JWT
+my-jwt:
+  secret-key: ${hc.jwt.secret-key}
+  ttl: ${hc.jwt.ttl}
+  token-name: ${hc.jwt.token-name}
+
+

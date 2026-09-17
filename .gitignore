@@ -45,5 +45,12 @@ old-index.html
 .env
 .env.local
 
+## 前端
+node_modules/
+dist/
+dist-ssr/
+*.local
+
 ## error 记录文件
 error/
+/.claude/settings.local.json

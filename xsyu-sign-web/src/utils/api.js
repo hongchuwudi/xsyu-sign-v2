@@ -28,7 +28,15 @@ request.interceptors.response.use(
 
 export default request
 
-// 示例接口（按需扩展）
 export const api = {
-  getPublicKey: () => request.get('/user/public-key')
+  // ===== 认证（登录，学号即账号） =====
+  getPublicKey: () => request.get('/user/public-key'),
+  xsyLogin: (username, casPsd, captchaSessionId, captchaCode) => request.post('/user/xsy-login', { username, casPsd, captchaSessionId, captchaCode }),
+  smsSend: phone => request.post('/user/sms/send', { phone }),
+  smsLogin: (smsSessionId, username, phone, smsCode) => request.post('/user/sms/login', { smsSessionId, username, phone, smsCode }),
+  qrCreate: username => request.post('/user/qr/create', { username }),
+  qrPoll: qrSessionId => request.post('/user/qr/poll', { qrSessionId }),
+
+  // ===== 公告 =====
+  getLatestAnnouncement: () => request.get('/user/announcement/latest')
 }

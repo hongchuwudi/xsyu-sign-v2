@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XSYUOneKeySign.java</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-size: 13px; line-height: 1.6; background: #fff; }
+.toolbar { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: 6px 16px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; z-index: 10; }
+.toolbar span { font-size: 12px; color: #57606a; font-family: Consolas, Monaco, monospace; }
+.toolbar button { padding: 4px 12px; font-size: 12px; border: 1px solid #d0d7de; border-radius: 6px; background: #fff; color: #24292f; cursor: pointer; transition: all .15s; }
+.toolbar button:hover { background: #f3f4f6; border-color: #8c959f; }
+.toolbar button.copied { background: #dafbe1; border-color: #4ac26b; color: #116329; }
+pre { margin: 0; padding: 16px; overflow-x: auto; white-space: pre; }
+code { font-family: Consolas, Monaco, 'Courier New', monospace; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+    <span>XSYUOneKeySign.java</span>
+    <button id="copyBtn" onclick="copyCode()">复制代码</button>
+</div>
+<pre><code id="code" class="language-java"></code></pre>
+<script>
+fetch('./XSYUOneKeySign.txt')
+  .then(r => r.text())
+  .then(code => {
+    document.getElementById('code').textContent = code;
+    hljs.highlightAll();
+  });
+
+function copyCode() {
+  const code = document.getElementById('code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '已复制!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制代码'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>
