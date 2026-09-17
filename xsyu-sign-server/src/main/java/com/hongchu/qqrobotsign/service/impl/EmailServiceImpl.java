@@ -25,16 +25,21 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendSimpleEmail(String to, String subject, String content) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("油签机 <" + adminConfig.getEmail() + ">");
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(content + EmailContext.EMAIL_SIGNATURE);
-            mailSender.send(message);
+            sendManagedEmail(to, subject, content);
             log.info("邮件发送成功，收件人：{}", to);
         } catch (Exception e) {
             log.error("邮件发送失败，收件人：{}", to, e);
         }
+    }
+
+    @Override
+    public void sendManagedEmail(String to, String subject, String content) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("油签机 <" + adminConfig.getEmail() + ">");
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(content + EmailContext.EMAIL_SIGNATURE);
+        mailSender.send(message);
     }
 
 

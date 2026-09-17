@@ -30,7 +30,11 @@ function showError(msg) {
   error.value = msg
 }
 
-onMounted(() => {if (userStore.isLoggedIn) router.push('/')})
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    router.replace(userStore.role === 'ADMIN' ? '/admin/users' : '/')
+  }
+})
 
 onBeforeUnmount(() => {
   stopSmsCountdown()
@@ -43,7 +47,7 @@ function onLoginSuccess(data) {
   stopSmsCountdown()
   stopQrPolling()
   userStore.setUserInfo(data)
-  router.push('/')
+  router.replace(data.role === 'ADMIN' ? '/admin/users' : '/')
 }
 
 async function encryptPassword(password) {

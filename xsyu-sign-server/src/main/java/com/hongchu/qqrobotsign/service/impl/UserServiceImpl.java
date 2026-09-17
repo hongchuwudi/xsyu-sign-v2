@@ -615,6 +615,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .signStartTime(byId.getSignStartTime() != null ? byId.getSignStartTime().toString() : null)
                 .signEndTime(byId.getSignEndTime() != null ? byId.getSignEndTime().toString() : null)
                 .phone(byId.getPhone())
+                .jwsRefreshedAt(byId.getJwsRefreshedAt() != null ? byId.getJwsRefreshedAt().toString() : null)
                 .build();
     }
 }

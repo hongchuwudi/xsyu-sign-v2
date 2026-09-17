@@ -1,9 +1,22 @@
 import { defineStore } from 'pinia'
 
+// 未登录时的默认值：保持对象形态（而非 null），
+// 避免退出登录时页面组件重渲染瞬间读到 null 崩溃
+const EMPTY_USER_INFO = {
+  id: '',
+  name: '',
+  username: '',
+  email: '',
+  jwt: '',
+  autoSign: false,
+  signDays: '',
+  role: 'USER'
+}
+
 // 全局用户状态：登录信息持久化到 localStorage，刷新页面不丢
 export const useUserStore = defineStore('user', {
   state: () => ({
-    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null')
+    userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null') || { ...EMPTY_USER_INFO }
   }),
 
   getters: {
@@ -18,7 +31,7 @@ export const useUserStore = defineStore('user', {
       localStorage.setItem('userInfo', JSON.stringify(info))
     },
     clear() {
-      this.userInfo = null
+      this.userInfo = { ...EMPTY_USER_INFO }
       localStorage.removeItem('userInfo')
     }
   }

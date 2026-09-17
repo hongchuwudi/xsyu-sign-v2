@@ -2,6 +2,14 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 
+const backendProxy = {
+  target: 'http://localhost:11451',
+  bypass(request) {
+    // Frontend history routes can share paths with backend APIs.
+    if (request.headers.accept?.includes('text/html')) return request.url
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
@@ -14,10 +22,10 @@ export default defineConfig({
     port: 5173,
     // 开发环境：API 代理到本地 Spring Boot 后端
     proxy: {
-      '/user': 'http://localhost:11451',
-      '/sign': 'http://localhost:11451',
-      '/admin': 'http://localhost:11451',
-      '/announcement': 'http://localhost:11451'
+      '/user': backendProxy,
+      '/sign': backendProxy,
+      '/admin': backendProxy,
+      '/announcement': backendProxy
     }
   },
   build: {

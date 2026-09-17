@@ -4,6 +4,9 @@ public interface EmailService {
     // 发送简单邮件
     void sendSimpleEmail(String to, String subject, String content);
 
+    /** 管理员邮件任务使用；发送失败时将异常抛给任务执行器记录。 */
+    void sendManagedEmail(String to, String subject, String content);
+
     // 通知用户签到时间安排
     void sendScheduleNotice(String to, String username, String scheduledTime);
 
