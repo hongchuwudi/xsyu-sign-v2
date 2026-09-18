@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+.playwright-cli
+docs
+**/node_modules
+**/dist
+**/target
+**/*.log
+**/.env
+**/.env.*
+xsyu-sign-server/src/main/resources/application-dev.yml
+xsyu-sign-server/src/main/resources/application-prod.yml
+xsyu-sign-server/src/main/resources/application-test.yml
+xsyu-sign-server/src/main/resources/application-signInfo.yml

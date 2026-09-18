@@ -61,7 +61,7 @@ Nginx、Let's Encrypt 证书、MySQL、Redis 不属于应用流水线的发布�
 
 1. 检出源码。
 2. 使用锁文件安装前端依赖并构建 Vue。
-3. 使用 Java 17 运行后端测试和打包。
+3. 使用 Java 17 运行不访问真实外部系统的后端单元测试并完成打包。现有会连接真实数据库、邮件和 CAS 的观测测试不进入 CI。
 4. 构建 Docker 镜像。
 5. PR 只验证构建，不推送镜像。
 6. `main` 推送使用 `GITHUB_TOKEN` 登录 GHCR，并推送 SHA 标签和 `latest`。
