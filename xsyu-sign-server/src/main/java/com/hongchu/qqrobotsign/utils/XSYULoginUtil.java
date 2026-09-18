@@ -278,7 +278,7 @@ public class XSYULoginUtil {
 
     // ==================== Error diagnosis ====================
 
-    private static CasErrorType diagnoseError(String html) {
+    static CasErrorType diagnoseError(String html) {
         String msg = extractErrorMessage(html);
 
         // 账号状态只能根据CAS明确返回的错误文本判断。登录页脚本和控件本身也可能包含disabled等字样，
@@ -305,7 +305,7 @@ public class XSYULoginUtil {
         return false;
     }
 
-    private static String extractErrorMessage(String html) {
+    static String extractErrorMessage(String html) {
         Matcher m = ERROR_MSG_PATTERN.matcher(html);
         if (m.find()) return normalizeErrorMessage(m.group(1));
 
