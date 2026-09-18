@@ -21,6 +21,17 @@ class XSYULoginUtilTest {
     }
 
     @Test
+    void shouldTreatFutureLockWarningAsWrongPassword() {
+        String html = """
+                <html>
+                  <span id="msg1">账号或密码错误。再输错4次，账号将被锁定。</span>
+                </html>
+                """;
+        assertEquals(CasErrorType.WRONG_PASSWORD, XSYULoginUtil.diagnoseError(html));
+        assertEquals("账号或密码错误。再输错4次，账号将被锁定。", XSYULoginUtil.extractErrorMessage(html));
+    }
+
+    @Test
     void shouldTreatExplicitLockedMessageAsAccountLocked() {
         String html = """
                 <html>

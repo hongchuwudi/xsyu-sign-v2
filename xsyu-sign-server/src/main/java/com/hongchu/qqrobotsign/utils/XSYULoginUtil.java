@@ -281,9 +281,12 @@ public class XSYULoginUtil {
     static CasErrorType diagnoseError(String html) {
         String msg = extractErrorMessage(html);
 
-        // 账号状态只能根据CAS明确返回的错误文本判断。登录页脚本和控件本身也可能包含disabled等字样，
-        // 扫描整页会把普通密码错误误判为账号锁定。
-        if (msg != null && containsAny(msg, "账号被锁定", "锁定", "冻结", "locked", "disabled")) {
+        // 账号状态只能根据CAS明确返回的“当前已锁定”语义判断。
+        // “账号或密码错误。再输错4次，账号将被锁定。”只是风险提示，仍应归类为密码错误。
+        if (msg != null && containsAny(msg,
+                "账号已被锁定", "账号已锁定", "账号被锁定", "账号被冻结",
+                "账户已被锁定", "账户已锁定", "账户被锁定", "账户被冻结",
+                "account locked", "account disabled")) {
             return CasErrorType.ACCOUNT_LOCKED;
         }
         // 所有页面（含注释）都有“验证码”字样，必须使用真实的authcode字段判断。
