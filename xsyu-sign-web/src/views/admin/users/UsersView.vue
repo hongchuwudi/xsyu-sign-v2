@@ -30,9 +30,15 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailUser = ref(null)
 const detailSigns = ref([])
+const clockNow = ref(Date.now())
 
 let searchTimer = null
+let lifetimeTimer = null
 let requestSequence = 0
+
+const HOUR_MS = 60 * 60 * 1000
+const DAY_MS = 24 * HOUR_MS
+const JWS_VALID_MS = 28 * DAY_MS
 
 const totalPages = computed(() => Math.max(1, serverPages.value || Math.ceil(total.value / pageSize.value)))
 const rangeStart = computed(() => total.value ? (currentPage.value - 1) * pageSize.value + 1 : 0)
@@ -246,14 +252,63 @@ function formatDate(value) {
   return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+function formatDuration(milliseconds) {
+  const totalHours = Math.floor(Math.abs(milliseconds) / HOUR_MS)
+  if (totalHours < 1) return '不足 1 小时'
+  const days = Math.floor(totalHours / 24)
+  const hours = totalHours % 24
+  if (days && hours) return `${days} 天 ${hours} 小时`
+  if (days) return `${days} 天`
+  return `${hours} 小时`
+}
+
+function getJwsLifetime(user) {
+  const createdAt = user?.jwsRefreshedAt ? new Date(user.jwsRefreshedAt) : null
+  const createdTimestamp = createdAt?.getTime()
+
+  if (!createdAt || Number.isNaN(createdTimestamp)) {
+    return {
+      text: '无创建记录',
+      createdText: '创建时间 --',
+      badgeClass: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200',
+      icon: 'fas fa-circle-exclamation'
+    }
+  }
+
+  const remainingMs = createdTimestamp + JWS_VALID_MS - clockNow.value
+  const expired = remainingMs <= 0
+  const warning = remainingMs <= 7 * DAY_MS
+  const danger = remainingMs <= 3 * DAY_MS
+  const badgeClass = danger
+    ? 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200'
+    : warning
+      ? 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+      : 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
+
+  return {
+    text: expired ? `已过期 ${formatDuration(remainingMs)}` : `剩余 ${formatDuration(remainingMs)}`,
+    createdText: `创建于 ${formatDate(createdAt)}`,
+    badgeClass,
+    icon: expired ? 'fas fa-circle-xmark' : danger ? 'fas fa-triangle-exclamation' : 'fas fa-clock'
+  }
+}
+
 function formatDays(value) {
   if (!value) return '未设置'
   const days = value.split(',').filter(Boolean)
   return days.length === 7 ? '每天' : `${days.length} 天/周`
 }
 
-onMounted(loadDashboard)
-onBeforeUnmount(() => clearTimeout(searchTimer))
+onMounted(() => {
+  loadDashboard()
+  lifetimeTimer = setInterval(() => {
+    clockNow.value = Date.now()
+  }, 60 * 1000)
+})
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  clearInterval(lifetimeTimer)
+})
 </script>
 
 <template>
@@ -307,12 +362,19 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         <template v-else>
           <div class="hidden overflow-x-auto md:block">
             <table class="w-full min-w-[920px] text-left">
-              <thead class="border-b border-pink-100 bg-pink-50/60 text-xs font-semibold text-gray-500"><tr><th class="px-4 py-3">用户</th><th class="px-4 py-3">自动签到</th><th class="px-4 py-3">JWS</th><th class="px-4 py-3">签到计划</th><th class="px-4 py-3">最近更新</th><th class="px-4 py-3 text-right">操作</th></tr></thead>
+              <thead class="border-b border-pink-100 bg-pink-50/60 text-xs font-semibold text-gray-500"><tr><th class="px-4 py-3">用户</th><th class="px-4 py-3">自动签到</th><th class="px-4 py-3">JWS 生命周期</th><th class="px-4 py-3">签到计划</th><th class="px-4 py-3">最近更新</th><th class="px-4 py-3 text-right">操作</th></tr></thead>
               <tbody class="divide-y divide-gray-100">
                 <tr v-for="user in users" :key="user.id || user.username" class="transition-colors hover:bg-pink-50/40">
                   <td class="px-4 py-3"><button type="button" class="text-left" @click="openDetail(user)"><span class="block text-sm font-semibold text-gray-900 hover:text-rose-600">{{ user.name || '未填写姓名' }}</span><span class="block text-xs text-gray-400">{{ user.username }}<template v-if="user.email"> · {{ user.email }}</template></span></button></td>
                   <td class="px-4 py-3"><button type="button" role="switch" :aria-checked="Boolean(user.autoSign)" :aria-label="`${user.username} 自动签到`" :disabled="Boolean(busyAction)" :class="user.autoSign ? 'bg-emerald-500' : 'bg-gray-300'" class="relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50" @click="toggleAutoSign(user)"><span :class="user.autoSign ? 'translate-x-5' : 'translate-x-0.5'" class="absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"></span></button></td>
-                  <td class="px-4 py-3"><span :class="user.jws ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'" class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium"><i :class="user.jws ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" aria-hidden="true"></i>{{ user.jws ? '有效' : '失效' }}</span></td>
+                  <td class="px-4 py-3">
+                    <div class="min-w-[158px]">
+                      <span :class="getJwsLifetime(user).badgeClass" class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold">
+                        <i :class="getJwsLifetime(user).icon" aria-hidden="true"></i>{{ getJwsLifetime(user).text }}
+                      </span>
+                      <span class="mt-1 block text-[11px] text-gray-400">{{ getJwsLifetime(user).createdText }}</span>
+                    </div>
+                  </td>
                   <td class="px-4 py-3 text-xs text-gray-600"><span class="block">{{ formatDays(user.signDays) }}</span><span class="mt-0.5 block text-gray-400">{{ user.signStartTime || '--' }} - {{ user.signEndTime || '--' }}</span></td>
                   <td class="px-4 py-3 text-xs text-gray-500">{{ formatDate(user.updatedAt) }}</td>
                   <td class="px-4 py-3"><div class="flex justify-end gap-1">
@@ -329,7 +391,13 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
 
           <div class="divide-y divide-gray-100 md:hidden">
             <article v-for="user in users" :key="user.id || user.username" class="p-4">
-              <div class="flex items-start justify-between gap-3"><button type="button" class="min-w-0 text-left" @click="openDetail(user)"><h3 class="truncate text-sm font-semibold text-gray-900">{{ user.name || '未填写姓名' }}</h3><p class="mt-0.5 truncate text-xs text-gray-400">{{ user.username }}<template v-if="user.email"> · {{ user.email }}</template></p></button><span :class="user.jws ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'" class="shrink-0 rounded-full px-2 py-1 text-xs font-medium">{{ user.jws ? 'JWS 有效' : 'JWS 失效' }}</span></div>
+              <div class="flex items-start justify-between gap-3">
+                <button type="button" class="min-w-0 text-left" @click="openDetail(user)"><h3 class="truncate text-sm font-semibold text-gray-900">{{ user.name || '未填写姓名' }}</h3><p class="mt-0.5 truncate text-xs text-gray-400">{{ user.username }}<template v-if="user.email"> · {{ user.email }}</template></p></button>
+                <div class="shrink-0 text-right">
+                  <span :class="getJwsLifetime(user).badgeClass" class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"><i :class="getJwsLifetime(user).icon" aria-hidden="true"></i>{{ getJwsLifetime(user).text }}</span>
+                  <p class="mt-1 text-[11px] text-gray-400">{{ getJwsLifetime(user).createdText }}</p>
+                </div>
+              </div>
               <div class="mt-3 flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2"><div class="text-xs text-gray-500"><span>{{ formatDays(user.signDays) }}</span><span class="mx-1 text-gray-300">·</span><span>{{ user.signStartTime || '--' }} - {{ user.signEndTime || '--' }}</span></div><button type="button" role="switch" :aria-checked="Boolean(user.autoSign)" :aria-label="`${user.username} 自动签到`" :disabled="Boolean(busyAction)" :class="user.autoSign ? 'bg-emerald-500' : 'bg-gray-300'" class="relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50" @click="toggleAutoSign(user)"><span :class="user.autoSign ? 'translate-x-5' : 'translate-x-0.5'" class="absolute left-0 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"></span></button></div>
               <div class="mt-3 grid grid-cols-5 gap-1">
                 <button type="button" title="详情" class="rounded-lg py-2 text-gray-400 hover:bg-pink-50 hover:text-pink-600" @click="openDetail(user)"><i class="fas fa-eye" aria-hidden="true"></i><span class="sr-only">详情</span></button>
