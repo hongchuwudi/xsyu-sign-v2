@@ -32,7 +32,7 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 
-COPY --from=backend-build /workspace/xsyu-sign-server/target/qq-robot-sign-0.0.1-SNAPSHOT.jar /app/app.jar
+COPY --from=backend-build /workspace/xsyu-sign-server/target/qq-robot-sign-1.1.0.jar /app/app.jar
 
 EXPOSE 11451
 

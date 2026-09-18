@@ -34,6 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/",
                         // 前端资源
                         "/assets/**",
+                        "/code/**",
                         "/css/**",
                         "/js/**",
                         "/img/**",
@@ -64,6 +65,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/resources/**",
                         // 前端资源
                         "/assets/**",
+                        "/code/**",
                         "/css/**",
                         "/js/**",
                         "/img/**",

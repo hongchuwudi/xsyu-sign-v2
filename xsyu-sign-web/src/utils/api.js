@@ -123,5 +123,6 @@ export const api = {
   deleteOperationLogs: ids => request.delete('/admin/operation-logs', { data: { ids } }),
 
   // ===== 公告 =====
-  getLatestAnnouncement: () => request.get('/user/announcement/latest')
+  getLatestAnnouncement: () => request.get('/user/announcement/latest'),
+  getUserAnnouncements: () => request.get('/user/announcements')
 }

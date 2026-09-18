@@ -3,6 +3,7 @@
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const appVersion = __APP_VERSION__
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -30,7 +31,7 @@ function goBack() {
             <i class="fas fa-calendar-check text-white text-3xl"></i>
           </div>
           <h2 class="text-2xl font-bold text-pink-800">校园签到系统</h2>
-          <p class="text-pink-500 mt-2">版本 1.0.0</p>
+          <p class="text-pink-500 mt-2">版本 {{ appVersion }}</p>
         </div>
 
         <!-- 使用说明 -->

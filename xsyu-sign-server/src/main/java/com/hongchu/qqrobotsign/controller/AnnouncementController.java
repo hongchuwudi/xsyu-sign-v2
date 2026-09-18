@@ -37,6 +37,17 @@ public class AnnouncementController {
     }
 
     /**
+     * 获取用户可查看的全部公告，按发布时间倒序排列
+     *
+     * @return 公告列表
+     */
+    @GetMapping("/user/announcements")
+    public Result<List<Announcement>> listForUser() {
+        log.info("controller层-获取用户公告列表");
+        return Result.success(announcementService.listAll());
+    }
+
+    /**
      * 获取所有公告
      *
      * @return 公告列表
