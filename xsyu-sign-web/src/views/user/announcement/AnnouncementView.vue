@@ -56,6 +56,11 @@ function formatDate(d) {
     + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0')
 }
 
+function formatVersion(value) {
+  if (!value) return ''
+  return /^v/i.test(value) ? value : `v${value}`
+}
+
 </script>
 
 <template>
@@ -132,14 +137,14 @@ function formatDate(d) {
                     </span>
                     <span class="mt-1 block text-[11px] text-gray-400">{{ formatDate(item.createdAt) }}</span>
                   </span>
-                  <span v-if="item.appVersion" class="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">v{{ item.appVersion }}</span>
+                  <span v-if="item.appVersion" class="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600">{{ formatVersion(item.appVersion) }}</span>
                 </button>
               </div>
             </div>
           </div>
           <div class="flex items-center gap-3 text-xs text-gray-400 mb-6 pb-4 border-b border-gray-200">
             <span v-if="announcement.appVersion">
-              <i class="fas fa-code-branch mr-1"></i>{{ announcement.appVersion }}
+              <i class="fas fa-code-branch mr-1"></i>{{ formatVersion(announcement.appVersion) }}
             </span>
             <span><i class="far fa-clock mr-1"></i>{{ formatDate(announcement.createdAt) }}</span>
           </div>
