@@ -1,6 +1,7 @@
 package com.hongchu.qqrobotsign.controller;
 
 import com.hongchu.qqrobotsign.pojo.entity.Announcement;
+import com.hongchu.qqrobotsign.pojo.DTO.AnnouncementSaveRequest;
 import com.hongchu.qqrobotsign.result.Result;
 import com.hongchu.qqrobotsign.service.IAnnouncementService;
 import lombok.RequiredArgsConstructor;
@@ -65,9 +66,9 @@ public class AnnouncementController {
      * @return 操作结果
      */
     @PostMapping("/admin/announcements")
-    public Result<Void> add(@RequestBody Announcement announcement) {
+    public Result<Void> add(@RequestBody AnnouncementSaveRequest request) {
         log.info("controller层-新增公告");
-        announcementService.add(announcement);
+        announcementService.add(request);
         return Result.success();
     }
 
@@ -79,10 +80,9 @@ public class AnnouncementController {
      * @return 操作结果
      */
     @PutMapping("/admin/announcements/{id}")
-    public Result<Void> update(@PathVariable Long id, @RequestBody Announcement announcement) {
+    public Result<Void> update(@PathVariable Long id, @RequestBody AnnouncementSaveRequest request) {
         log.info("controller层-更新公告-id: {}", id);
-        announcement.setId(id);
-        announcementService.update(announcement);
+        announcementService.update(id, request);
         return Result.success();
     }
 

@@ -2,6 +2,7 @@ package com.hongchu.qqrobotsign.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hongchu.qqrobotsign.pojo.entity.Announcement;
+import com.hongchu.qqrobotsign.pojo.DTO.AnnouncementSaveRequest;
 
 import java.util.List;
 
@@ -17,10 +18,10 @@ public interface IAnnouncementService extends IService<Announcement> {
     Announcement getById(Long id);
 
     /** 新增公告 */
-    void add(Announcement announcement);
+    void add(AnnouncementSaveRequest request);
 
     /** 更新公告 */
-    void update(Announcement announcement);
+    void update(Long id, AnnouncementSaveRequest request);
 
     /** 删除公告 */
     void delete(Long id);

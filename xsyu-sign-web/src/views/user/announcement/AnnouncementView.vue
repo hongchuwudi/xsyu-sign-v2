@@ -1,6 +1,8 @@
 <script setup>
 // 公告页：最新公告（原"使用教程"内容）+ 关键源代码
 import { ref, onMounted } from 'vue'
+import { MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/preview.css'
 import { api } from '@/utils/api'
 import BottomNav from '@/components/BottomNav.vue'
 import UserMenuButton from '@/components/UserMenuButton.vue'
@@ -30,20 +32,6 @@ function formatDate(d) {
     + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0')
 }
 
-function renderMarkdown(md) {
-  if (!md) return ''
-  return md
-    .replace(/### (.+)/g, '<h3 class="text-lg font-semibold mt-3 mb-1">$1</h3>')
-    .replace(/## (.+)/g, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
-    .replace(/# (.+)/g, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg my-3 max-w-full">')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/- (.+)/g, '<li class="ml-4">$1</li>')
-    .replace(/<li/g, '<ul class="list-disc ml-4 my-2"><li')
-    .replace(/<\/li>(?!.*<\/li>)/, '</li></ul>')
-    .replace(/\n\n/g, '<br><br>')
-    .replace(/\n/g, '<br>')
-}
 </script>
 
 <template>
@@ -90,7 +78,7 @@ function renderMarkdown(md) {
             </span>
             <span><i class="far fa-clock mr-1"></i>{{ formatDate(announcement.createdAt) }}</span>
           </div>
-          <div class="prose prose-sm max-w-none text-gray-700" v-html="renderMarkdown(announcement.content)"></div>
+          <MdPreview :model-value="announcement.content || ''" preview-theme="github" />
         </div>
         <div v-else class="text-center py-12">
           <i class="fas fa-inbox text-gray-200 text-4xl mb-3"></i>

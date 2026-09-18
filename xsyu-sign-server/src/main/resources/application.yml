@@ -45,6 +45,23 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  servlet:
+    multipart:
+      max-file-size: ${ALIYUN_OSS_MAX_FILE_SIZE:10MB}
+      max-request-size: ${ALIYUN_OSS_MAX_REQUEST_SIZE:11MB}
+
+xsyu:
+  storage:
+    type: aliyun-oss
+    cleanup-cron: ${ALIYUN_OSS_CLEANUP_CRON:0 30 3 * * *}
+    oss:
+      endpoint: ${ALIYUN_OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
+      bucket: ${ALIYUN_OSS_BUCKET:hc-base}
+      public-base-url: ${ALIYUN_OSS_PUBLIC_BASE_URL:https://hc-base.cn-beijing.taihangpkx.cn}
+      object-prefix: ${ALIYUN_OSS_OBJECT_PREFIX:xsyu-sign/media}
+      access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
+      max-file-size: ${ALIYUN_OSS_MAX_FILE_SIZE:10MB}
 
 # 日志
 logging:

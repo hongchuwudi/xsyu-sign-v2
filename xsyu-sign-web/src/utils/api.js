@@ -112,6 +112,12 @@ export const api = {
   addAnnouncement: data => request.post('/admin/announcements', data),
   updateAnnouncement: (id, data) => request.put(`/admin/announcements/${id}`, data),
   deleteAnnouncement: id => request.delete(`/admin/announcements/${id}`),
+  uploadImage: (file, draftToken) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (draftToken) formData.append('draftToken', draftToken)
+    return request.post('/admin/assets/images', formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 })
+  },
 
   // ===== 管理员：操作日志 =====
   getOperationLogs: params => request.get('/admin/operation-logs', { params }),

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 
@@ -114,6 +115,12 @@ public class GlobalExceptionHandler {
     public Result<String> handleMessageNotReadable(HttpMessageNotReadableException ex) {
         log.error("请求体解析异常：{}", ex.getMessage());
         return Result.fail("请求体格式错误");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<String> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        log.warn("上传文件超过大小限制");
+        return Result.fail("图片超过上传大小限制");
     }
 
     /**
