@@ -100,7 +100,6 @@ export const api = {
   getEmailTasks: () => request.get('/admin/email/tasks'),
   getEmailTaskRecipients: id => request.get(`/admin/email/tasks/${id}/recipients`),
   sendEmailNow: data => request.post('/admin/email/tasks/send-now', data),
-  scheduleEmail: data => request.post('/admin/email/tasks/schedule', data),
   cancelEmailTask: id => request.post(`/admin/email/tasks/${id}/cancel`),
 
   // ===== 管理员：Redis 队列 =====

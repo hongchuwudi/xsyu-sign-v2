@@ -26,6 +26,5 @@ public interface IAdminEmailService {
     List<EmailNotificationTaskVO> listTasks();
     List<EmailTaskRecipientVO> listRecipients(Long taskId);
     EmailNotificationTaskVO createImmediateTask(EmailNotificationTaskDTO dto);
-    EmailNotificationTaskVO createScheduledTask(EmailNotificationTaskDTO dto);
     void cancelTask(Long id);
 }

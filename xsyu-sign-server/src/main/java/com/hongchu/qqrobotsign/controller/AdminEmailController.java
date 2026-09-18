@@ -100,11 +100,6 @@ public class AdminEmailController {
         return Result.success(task);
     }
 
-    @PostMapping("/tasks/schedule")
-    public Result<EmailNotificationTaskVO> schedule(@RequestBody EmailNotificationTaskDTO dto) {
-        return Result.success(adminEmailService.createScheduledTask(dto));
-    }
-
     @PostMapping("/tasks/{id}/cancel")
     public Result<Void> cancel(@PathVariable Long id) {
         adminEmailService.cancelTask(id);

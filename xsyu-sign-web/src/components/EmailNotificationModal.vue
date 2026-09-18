@@ -31,9 +31,7 @@ const composer = reactive({
   subject: '',
   content: '',
   userIds: [],
-  groupIds: [],
-  scheduled: false,
-  scheduledAt: ''
+  groupIds: []
 })
 const templateForm = reactive({ id: null, name: '', subject: '', content: '' })
 const groupForm = reactive({ id: null, name: '', description: '', userIds: [] })
@@ -108,8 +106,6 @@ async function submitEmail() {
   if (!composer.userIds.length && !composer.groupIds.length) return showMessage('请至少选择一个用户或用户组', 'error')
   if (!composer.subject.trim()) return showMessage('请输入邮件主题', 'error')
   if (!composer.content.trim()) return showMessage('请输入邮件内容', 'error')
-  if (composer.scheduled && !composer.scheduledAt) return showMessage('请选择定时发送时间', 'error')
-
   saving.value = true
   const payload = {
     subject: composer.subject,
@@ -118,21 +114,14 @@ async function submitEmail() {
     groupIds: [...composer.groupIds]
   }
   try {
-    if (composer.scheduled) {
-      payload.scheduledAt = composer.scheduledAt
-      responseData(await api.scheduleEmail(payload), '创建定时邮件失败')
-      showMessage('定时邮件已创建')
-    } else {
-      responseData(await api.sendEmailNow(payload), '发送邮件失败')
-      showMessage('邮件任务已开始发送')
-    }
+    responseData(await api.sendEmailNow(payload), '发送邮件失败')
+    showMessage('邮件任务已开始发送')
     composer.userIds = []
     composer.groupIds = []
-    composer.scheduledAt = ''
     tasks.value = responseData(await api.getEmailTasks(), '刷新发送记录失败') || []
     activeTab.value = 'history'
   } catch (error) {
-    showMessage(requestMessage(error, composer.scheduled ? '创建定时邮件失败' : '发送邮件失败'), 'error')
+    showMessage(requestMessage(error, '发送邮件失败'), 'error')
   } finally {
     saving.value = false
   }
@@ -328,11 +317,7 @@ watch(() => props.visible, visible => {
             <div class="mb-1.5 flex flex-wrap items-center justify-between gap-2"><label for="email-content" class="text-sm font-medium text-gray-700">邮件内容</label><div class="flex flex-wrap gap-1"><button v-for="variable in ['{{name}}','{{username}}','{{email}}']" :key="variable" type="button" class="rounded border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-[11px] text-gray-600 hover:border-rose-200 hover:text-rose-600" @click="insertVariable(variable)">{{ variable }}</button></div></div>
             <textarea id="email-content" v-model="composer.content" rows="10" class="w-full resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm leading-6 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"></textarea>
           </div>
-          <div class="rounded-lg border border-gray-200 p-3">
-            <label class="flex cursor-pointer items-center justify-between gap-4"><span><span class="block text-sm font-medium text-gray-800">定时发送</span><span class="block text-xs text-gray-400">关闭时将立即创建发送任务</span></span><input v-model="composer.scheduled" type="checkbox" class="h-5 w-5 rounded border-gray-300 text-rose-500 focus:ring-rose-200"></label>
-            <label v-if="composer.scheduled" class="mt-3 block border-t border-gray-100 pt-3 text-sm font-medium text-gray-700">发送时间<input v-model="composer.scheduledAt" type="datetime-local" class="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"></label>
-          </div>
-          <div class="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-gray-500">已选择 <strong class="text-gray-900">{{ selectedRecipientIds.size }}</strong> 位去重收件人</p><button type="submit" :disabled="saving" class="h-10 min-w-[132px] rounded-lg bg-rose-500 px-5 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50"><i :class="saving ? 'fa-spinner fa-spin' : composer.scheduled ? 'fa-calendar-check' : 'fa-paper-plane'" class="fas mr-1.5" aria-hidden="true"></i>{{ composer.scheduled ? '创建定时任务' : '立即发送' }}</button></div>
+          <div class="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between"><p class="text-sm text-gray-500">已选择 <strong class="text-gray-900">{{ selectedRecipientIds.size }}</strong> 位去重收件人</p><button type="submit" :disabled="saving" class="h-10 min-w-[132px] rounded-lg bg-rose-500 px-5 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50"><i :class="saving ? 'fa-spinner fa-spin' : 'fa-paper-plane'" class="fas mr-1.5" aria-hidden="true"></i>立即发送</button></div>
         </form>
       </section>
 

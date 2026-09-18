@@ -168,15 +168,7 @@ public class AdminEmailServiceImpl implements IAdminEmailService {
     @Override
     @Transactional
     public EmailNotificationTaskVO createImmediateTask(EmailNotificationTaskDTO dto) {
-        return toTaskVO(createTask(dto, null));
-    }
-
-    @Override
-    @Transactional
-    public EmailNotificationTaskVO createScheduledTask(EmailNotificationTaskDTO dto) {
-        if (dto == null || dto.getScheduledAt() == null) throw new BusinessException("请选择定时发送时间");
-        if (!dto.getScheduledAt().isAfter(LocalDateTime.now())) throw new BusinessException("定时发送时间必须晚于当前时间");
-        return toTaskVO(createTask(dto, dto.getScheduledAt()));
+        return toTaskVO(createTask(dto));
     }
 
     @Override
@@ -195,7 +187,7 @@ public class AdminEmailServiceImpl implements IAdminEmailService {
         }
     }
 
-    private EmailNotificationTask createTask(EmailNotificationTaskDTO dto, LocalDateTime scheduledAt) {
+    private EmailNotificationTask createTask(EmailNotificationTaskDTO dto) {
         validateTask(dto);
         Set<Long> userIds = new LinkedHashSet<>();
         if (dto.getUserIds() != null) userIds.addAll(dto.getUserIds());
@@ -216,7 +208,7 @@ public class AdminEmailServiceImpl implements IAdminEmailService {
         task.setContent(dto.getContent());
         task.setStatus("PENDING");
         task.setEnabled(true);
-        task.setScheduledAt(scheduledAt);
+        task.setScheduledAt(null);
         task.setTotalCount(users.size());
         task.setSuccessCount(0);
         task.setFailureCount(0);
