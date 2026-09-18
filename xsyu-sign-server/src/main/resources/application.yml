@@ -57,7 +57,7 @@ xsyu:
     oss:
       endpoint: ${ALIYUN_OSS_ENDPOINT:https://oss-cn-beijing.aliyuncs.com}
       bucket: ${ALIYUN_OSS_BUCKET:hc-base}
-      public-base-url: ${ALIYUN_OSS_PUBLIC_BASE_URL:https://hc-base.cn-beijing.taihangpkx.cn}
+      public-base-url: ${ALIYUN_OSS_PUBLIC_BASE_URL:https://hc-base.oss-cn-beijing.aliyuncs.com}
       object-prefix: ${ALIYUN_OSS_OBJECT_PREFIX:xsyu-sign/media}
       access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
       access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
