@@ -333,6 +333,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (result.getErrorType() == CasErrorType.ACCOUNT_LOCKED) {
             throw new BusinessException("学号已被学校系统锁定，请稍后再试或改用短信/扫码");
         }
+        if (result.getErrorType() == CasErrorType.WRONG_PASSWORD) {
+            throw new BusinessException("账号或密码错误");
+        }
         if (result.getErrorType() != CasErrorType.SUCCESS) {
             throw new BusinessException("CAS验证失败：" + (result.getErrorMessage() != null ? result.getErrorMessage() : "请检查学号和密码"));
         }

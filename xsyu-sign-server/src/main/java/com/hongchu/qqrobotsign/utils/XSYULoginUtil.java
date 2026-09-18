@@ -30,7 +30,13 @@ public class XSYULoginUtil {
     private static final Pattern TICKET_PATTERN = Pattern.compile("ticket=([^\"&\\s]+)");
     private static final Pattern CAPTCHA_IMG_PATTERN =
             Pattern.compile("<img[^>]*src=[\"']([^\"']*(?:captcha|captchaImage|validateCode)[^\"']*)[\"']", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ERROR_MSG_PATTERN = Pattern.compile("<span[^>]*id=\"msg\"[^>]*>([^<]+)</span>");
+    private static final Pattern ERROR_MSG_PATTERN = Pattern.compile(
+            "<span\\b(?=[^>]*\\bid\\s*=\\s*[\"']msg1?[\"'])[^>]*>(.*?)</span>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern FALLBACK_ERROR_MSG_PATTERN = Pattern.compile(
+            "<(?:div|span)\\b(?=[^>]*\\bclass\\s*=\\s*[\"'][^\"']*(?:error|errors|alert|msg)[^\"']*[\"'])[^>]*>(.*?)</(?:div|span)>",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
 
     private static void applyBrowserHeaders(HttpURLConnection conn, String referer) {
         conn.setRequestProperty("User-Agent", UA);
@@ -273,16 +279,20 @@ public class XSYULoginUtil {
     // ==================== Error diagnosis ====================
 
     private static CasErrorType diagnoseError(String html) {
-        // Priority: locked > captcha(真实激活,页面含 authcode 输入框) > wrong password(msg span文本) > other
-        // 注意:所有页面(含注释)都有"验证码"字样,不能用 contains("验证码") 判断
-        if (containsAny(html, "锁定", "禁用", "locked", "disabled", "冻结")) {
+        String msg = extractErrorMessage(html);
+
+        // 账号状态只能根据CAS明确返回的错误文本判断。登录页脚本和控件本身也可能包含disabled等字样，
+        // 扫描整页会把普通密码错误误判为账号锁定。
+        if (msg != null && containsAny(msg, "账号被锁定", "锁定", "冻结", "locked", "disabled")) {
             return CasErrorType.ACCOUNT_LOCKED;
         }
+        // 所有页面（含注释）都有“验证码”字样，必须使用真实的authcode字段判断。
         if (html.contains("authcode")) {
             return CasErrorType.CAPTCHA_REQUIRED;
         }
-        String msg = extractErrorMessage(html);
-        if (msg != null && containsAny(msg, "错误", "不正确", "不存在", "无效", "invalid")) {
+        if (msg != null && containsAny(msg,
+                "账号或密码错误", "用户名或密码错误", "密码错误",
+                "不正确", "不存在", "无效", "invalid")) {
             return CasErrorType.WRONG_PASSWORD;
         }
         return CasErrorType.OTHER_ERROR;
@@ -297,13 +307,26 @@ public class XSYULoginUtil {
 
     private static String extractErrorMessage(String html) {
         Matcher m = ERROR_MSG_PATTERN.matcher(html);
-        if (m.find()) return m.group(1).trim();
+        if (m.find()) return normalizeErrorMessage(m.group(1));
 
-        // Fallback: look for common error div patterns
-        m = Pattern.compile("class=\"(?:error|errors|alert|msg)\"[^>]*>([^<]+)<").matcher(html);
-        if (m.find()) return m.group(1).trim();
+        // 兼容其他CAS主题使用的通用错误容器。
+        m = FALLBACK_ERROR_MSG_PATTERN.matcher(html);
+        if (m.find()) return normalizeErrorMessage(m.group(1));
 
         return null;
+    }
+
+    private static String normalizeErrorMessage(String messageHtml) {
+        String message = HTML_TAG_PATTERN.matcher(messageHtml).replaceAll("");
+        message = message
+                .replace("&nbsp;", " ")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&amp;", "&")
+                .trim();
+        return message.isEmpty() ? null : message;
     }
 
     // ==================== Captcha extraction ====================
