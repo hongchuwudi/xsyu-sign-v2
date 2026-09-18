@@ -17,6 +17,8 @@ fi
 
 readonly TARGET_IMAGE="${IMAGE_REPOSITORY}:${image_tag}"
 had_previous_container=false
+old_container_renamed=false
+new_container_started=false
 deployment_succeeded=false
 
 require_path() {
@@ -37,11 +39,15 @@ rollback() {
   fi
 
   echo "Deployment failed; restoring the previous container" >&2
-  docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  if [[ "$new_container_started" == "true" ]]; then
+    docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+  fi
 
-  if [[ "$had_previous_container" == "true" ]] && docker inspect "$BACKUP_CONTAINER_NAME" >/dev/null 2>&1; then
+  if [[ "$old_container_renamed" == "true" ]] && docker inspect "$BACKUP_CONTAINER_NAME" >/dev/null 2>&1; then
     docker rename "$BACKUP_CONTAINER_NAME" "$CONTAINER_NAME"
     docker start "$CONTAINER_NAME"
+  elif [[ "$had_previous_container" == "true" ]] && docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+    docker start "$CONTAINER_NAME" >/dev/null 2>&1 || true
   fi
 
   exit "$exit_code"
@@ -63,6 +69,7 @@ if docker inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
   had_previous_container=true
   docker stop "$CONTAINER_NAME"
   docker rename "$CONTAINER_NAME" "$BACKUP_CONTAINER_NAME"
+  old_container_renamed=true
 fi
 
 docker run -d \
@@ -74,6 +81,7 @@ docker run -d \
   --env-file "$ENV_FILE" \
   -e TZ=Asia/Shanghai \
   "$TARGET_IMAGE"
+new_container_started=true
 
 for attempt in $(seq 1 45); do
   if curl --fail --silent --show-error --max-time 3 "$HEALTH_URL" >/dev/null 2>&1; then
