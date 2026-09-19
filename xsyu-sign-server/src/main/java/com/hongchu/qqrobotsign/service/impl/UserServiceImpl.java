@@ -20,6 +20,7 @@ import com.hongchu.qqrobotsign.pojo.entity.CasSmsState;
 import com.hongchu.qqrobotsign.pojo.entity.User;
 import com.hongchu.qqrobotsign.properties.JwtProperties;
 import com.hongchu.qqrobotsign.config.props.AdminConfig;
+import com.hongchu.qqrobotsign.config.props.CredentialEncryptionProperties;
 import com.hongchu.qqrobotsign.service.CaptchaService;
 import com.hongchu.qqrobotsign.service.CasQrSessionService;
 import com.hongchu.qqrobotsign.service.CasSmsSessionService;
@@ -64,6 +65,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Autowired JwtProperties jwtProperties;
     @Autowired EmailService emailService;
     @Autowired AdminConfig adminConfig;
+    @Autowired CredentialEncryptionProperties credentialEncryptionProperties;
     @Autowired com.hongchu.qqrobotsign.config.props.RSAConfig rsaConfig;
     @Lazy @Autowired com.hongchu.qqrobotsign.webClient.BaseSignService baseSignService;
     @Autowired com.hongchu.qqrobotsign.service.IOperationLogService operationLogService;
@@ -82,25 +84,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
     }
 
-    /** 管理员登录：本地密码校验（不经过 CAS），兼容旧 AES 格式并迁移为 PBKDF2 */
+    /** 管理员登录：本地密码校验（不经过 CAS），只接受 PBKDF2 哈希格式 */
     private UserLoginVO adminLogin(String username, String password) {
         User user = this.getOne(new QueryWrapper<User>().eq("username", username));
         if (user == null) throw new BusinessException("管理员账号不存在，请联系系统管理员");
         String stored = user.getPassword() != null ? new String(user.getPassword(), StandardCharsets.UTF_8) : null;
         if (stored == null) throw new BusinessException("管理员账号未设置密码");
 
-        if (stored.startsWith(HASH_PREFIX)) {
-            if (!CryptoUtils.verifyPasswordHash(password, stored)) throw new BusinessException("密码错误");
-        } else {
-            String legacy;
-            try {
-                legacy = CryptoUtils.decrypt(stored);
-            } catch (Exception e) {
-                throw new BusinessException("密码错误");
-            }
-            if (!legacy.equals(password)) throw new BusinessException("密码错误");
-            user.setPassword(CryptoUtils.generatePasswordHash(password).getBytes(StandardCharsets.UTF_8));
+        if (!stored.startsWith(HASH_PREFIX)) {
+            throw new BusinessException("管理员密码存储格式已过期，请先完成密码迁移");
         }
+        if (!CryptoUtils.verifyPasswordHash(password, stored)) throw new BusinessException("密码错误");
         if (!"ADMIN".equals(user.getRole())) user.setRole("ADMIN");
         this.updateById(user);
         log.info("管理员 {} 登录成功", username);
@@ -147,7 +141,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                     "用户: " + username + " 无学校密码，无法自动续签", "FAIL", "SYSTEM", null, duration);
             throw new BusinessException("无学校密码，请用密码方式登录一次以保存");
         }
-        String pass = CryptoUtils.decrypt(new String(user.getStuPassword()));
+        String pass = CryptoUtils.decrypt(
+                new String(user.getStuPassword(), StandardCharsets.UTF_8),
+                credentialEncryptionProperties.getMasterKey());
         CasLoginResult result = XSYULoginUtil.login(user.getUsername(), pass);
         if (result.getErrorType() != CasErrorType.SUCCESS) {
             long duration = System.currentTimeMillis() - start;
@@ -280,7 +276,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     /** 绑定成功后保存并返回登录信息 */
     private UserLoginVO saveBinding(User user, String casPassword, String jws, String name, String phone) {
         if (casPassword != null) {
-            user.setStuPassword(CryptoUtils.encrypt(casPassword).getBytes(StandardCharsets.UTF_8));
+            user.setStuPassword(CryptoUtils.encrypt(
+                    casPassword, credentialEncryptionProperties.getMasterKey()).getBytes(StandardCharsets.UTF_8));
         }
         if (phone != null) user.setPhone(phone);
         if (name != null && !name.isBlank() && (user.getName() == null || user.getName().equals(user.getUsername()))) {
@@ -536,7 +533,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         if (phone != null) user.setPhone(phone);
         if (casPassword != null) {
-            user.setStuPassword(CryptoUtils.encrypt(casPassword).getBytes(StandardCharsets.UTF_8));
+            user.setStuPassword(CryptoUtils.encrypt(
+                    casPassword, credentialEncryptionProperties.getMasterKey()).getBytes(StandardCharsets.UTF_8));
         }
         user.setJws(jws);
         user.setJwsRefreshedAt(LocalDateTime.now());

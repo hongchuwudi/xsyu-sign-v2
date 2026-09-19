@@ -3,6 +3,8 @@ package com.hongchu.qqrobotsign;
 import com.hongchu.qqrobotsign.utils.CryptoUtils;
 
 public class TestCryptoUtils {
+    private static final String TEST_MASTER_KEY = "test-only-master-key-at-least-32-characters";
+
     public static void main(String[] args) {
         System.out.println("=== 强加密工具类测试 ===\n");
 
@@ -35,14 +37,14 @@ public class TestCryptoUtils {
         System.out.println("原始文本: " + originalText);
 
         // 加密
-        String encryptedText = CryptoUtils.encrypt(originalText);
+        String encryptedText = CryptoUtils.encrypt(originalText, TEST_MASTER_KEY);
         System.out.println("加密结果: " + encryptedText);
         System.out.println("加密格式: 盐值(" + encryptedText.split(":")[0].length() + "字符):初始向量(" +
                 encryptedText.split(":")[1].length() + "字符):密文(" +
                 encryptedText.split(":")[2].length() + "字符)");
 
         // 解密
-        String decryptedText = CryptoUtils.decrypt(encryptedText);
+        String decryptedText = CryptoUtils.decrypt(encryptedText, TEST_MASTER_KEY);
         System.out.println("解密结果: " + decryptedText);
 
         // 验证
@@ -61,15 +63,15 @@ public class TestCryptoUtils {
         System.out.println("原始密码: " + password);
 
         // 加密密码
-        String encryptedPassword = CryptoUtils.encrypt(password);
+        String encryptedPassword = CryptoUtils.encrypt(password, TEST_MASTER_KEY);
         System.out.println("加密密码: " + encryptedPassword.substring(0, 30) + "...");
 
         // 正确密码验证
-        boolean correctVerify = CryptoUtils.verifyPassword(password, encryptedPassword);
+        boolean correctVerify = CryptoUtils.verifyPassword(password, encryptedPassword, TEST_MASTER_KEY);
         System.out.println("正确密码验证: " + (correctVerify ? "✅ 通过" : "❌ 失败"));
 
         // 错误密码验证
-        boolean wrongVerify = CryptoUtils.verifyPassword("wrongPassword", encryptedPassword);
+        boolean wrongVerify = CryptoUtils.verifyPassword("wrongPassword", encryptedPassword, TEST_MASTER_KEY);
         System.out.println("错误密码验证: " + (!wrongVerify ? "✅ 拒绝" : "❌ 错误通过"));
 
         System.out.println();
@@ -125,8 +127,8 @@ public class TestCryptoUtils {
 
         // 测试空字符串
         try {
-            String emptyEncrypted = CryptoUtils.encrypt("");
-            String emptyDecrypted = CryptoUtils.decrypt(emptyEncrypted);
+            String emptyEncrypted = CryptoUtils.encrypt("", TEST_MASTER_KEY);
+            String emptyDecrypted = CryptoUtils.decrypt(emptyEncrypted, TEST_MASTER_KEY);
             System.out.println("空字符串测试: " + ("".equals(emptyDecrypted) ? "✅ 成功" : "❌ 失败"));
         } catch (Exception e) {
             System.out.println("空字符串测试: ❌ 异常 - " + e.getMessage());
@@ -135,8 +137,8 @@ public class TestCryptoUtils {
         // 测试长文本
         try {
             String longText = "A".repeat(1000);
-            String longEncrypted = CryptoUtils.encrypt(longText);
-            String longDecrypted = CryptoUtils.decrypt(longEncrypted);
+            String longEncrypted = CryptoUtils.encrypt(longText, TEST_MASTER_KEY);
+            String longDecrypted = CryptoUtils.decrypt(longEncrypted, TEST_MASTER_KEY);
             boolean longSuccess = longText.equals(longDecrypted);
             System.out.println("长文本测试(1000字符): " + (longSuccess ? "✅ 成功" : "❌ 失败"));
         } catch (Exception e) {
@@ -146,8 +148,8 @@ public class TestCryptoUtils {
         // 测试特殊字符
         try {
             String specialText = "密码!@#$%^&*()_+中文测试🚀";
-            String specialEncrypted = CryptoUtils.encrypt(specialText);
-            String specialDecrypted = CryptoUtils.decrypt(specialEncrypted);
+            String specialEncrypted = CryptoUtils.encrypt(specialText, TEST_MASTER_KEY);
+            String specialDecrypted = CryptoUtils.decrypt(specialEncrypted, TEST_MASTER_KEY);
             boolean specialSuccess = specialText.equals(specialDecrypted);
             System.out.println("特殊字符测试: " + (specialSuccess ? "✅ 成功" : "❌ 失败"));
         } catch (Exception e) {
@@ -156,7 +158,7 @@ public class TestCryptoUtils {
 
         // 测试无效加密格式
         try {
-            CryptoUtils.decrypt("invalid:format");
+            CryptoUtils.decrypt("invalid:format", TEST_MASTER_KEY);
             System.out.println("无效格式测试: ❌ 应该抛出异常");
         } catch (Exception e) {
             System.out.println("无效格式测试: ✅ 正确抛出异常");
@@ -177,8 +179,8 @@ public class TestCryptoUtils {
         long startTime = System.currentTimeMillis();
 
         for (int i = 0; i < testCount; i++) {
-            String encrypted = CryptoUtils.encrypt(testText + i);
-            String decrypted = CryptoUtils.decrypt(encrypted);
+            String encrypted = CryptoUtils.encrypt(testText + i, TEST_MASTER_KEY);
+            String decrypted = CryptoUtils.decrypt(encrypted, TEST_MASTER_KEY);
             if (!(testText + i).equals(decrypted)) {
                 System.out.println("性能测试: ❌ 第 " + i + " 次加解密失败");
                 return;

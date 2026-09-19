@@ -51,6 +51,10 @@ spring:
       max-request-size: ${ALIYUN_OSS_MAX_REQUEST_SIZE:11MB}
 
 xsyu:
+  security:
+    credential-encryption:
+      # 必须由运行环境提供，至少 32 个字符，禁止写入 Git。
+      master-key: ${XSYU_STUDENT_PASSWORD_MASTER_KEY:}
   storage:
     type: aliyun-oss
     cleanup-cron: ${ALIYUN_OSS_CLEANUP_CRON:0 30 3 * * *}

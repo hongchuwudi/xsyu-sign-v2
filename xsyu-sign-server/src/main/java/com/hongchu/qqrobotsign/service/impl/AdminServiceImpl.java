@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hongchu.qqrobotsign.enums.CasErrorType;
+import com.hongchu.qqrobotsign.config.props.CredentialEncryptionProperties;
 import com.hongchu.qqrobotsign.exception.BusinessException;
 import com.hongchu.qqrobotsign.mapper.UserMapper;
 import com.hongchu.qqrobotsign.pojo.DTO.UserDTO;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -48,6 +50,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
     @Autowired BaseSignService baseSignService;
     @Autowired UserServiceImpl userService;
     @Autowired com.hongchu.qqrobotsign.service.IOperationLogService operationLogService;
+    @Autowired CredentialEncryptionProperties credentialEncryptionProperties;
 
     @Override
     public IPage<UserVO> getUsersByPage(Page<User> page, String keyword, String filter) {
@@ -213,7 +216,9 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
         User newUser = new User();
         newUser.setUsername(userDTO.getUsername());
         newUser.setName(userDTO.getName() != null ? userDTO.getName() : UserServiceImpl.buildDefaultName(userDTO.getUsername()));
-        newUser.setStuPassword(CryptoUtils.encrypt(userDTO.getPassword()).getBytes());
+        newUser.setStuPassword(CryptoUtils.encrypt(
+                userDTO.getPassword(), credentialEncryptionProperties.getMasterKey())
+                .getBytes(StandardCharsets.UTF_8));
         newUser.setRole("USER");
         newUser.setJws(jws);
         newUser.setJwsRefreshedAt(LocalDateTime.now());

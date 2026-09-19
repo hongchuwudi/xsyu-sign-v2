@@ -24,8 +24,6 @@ public class CryptoUtils {
     private static final int IV_LENGTH_BYTE = 12;  // GCM初始向量长度
     private static final int SALT_LENGTH_BYTE = 16; // 盐值长度
 
-    // 主密码，可以从配置文件中读取
-    private static final String MASTER_PASSWORD = "hc-strong-master-password-2025!";
     private static final int ITERATION_COUNT = 65536;
     private static final int KEY_LENGTH = 256;
 
@@ -36,7 +34,8 @@ public class CryptoUtils {
      * @param plainText 明文
      * @return 加密后的字符串（格式: 盐值:初始向量:密文）
      */
-    public static String encrypt(String plainText) {
+    public static String encrypt(String plainText, String masterPassword) {
+        validateMasterPassword(masterPassword);
         try {
             // 生成随机盐值
             byte[] salt = new byte[SALT_LENGTH_BYTE];
@@ -47,7 +46,7 @@ public class CryptoUtils {
             secureRandom.nextBytes(iv);
 
             // 从主密码和盐值派生密钥
-            SecretKey secretKey = deriveKey(MASTER_PASSWORD, salt);
+            SecretKey secretKey = deriveKey(masterPassword, salt);
 
             // 初始化加密器
             Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -74,7 +73,8 @@ public class CryptoUtils {
      * @param encryptedText 加密的字符串（格式: 盐值:初始向量:密文）
      * @return 解密后的明文
      */
-    public static String decrypt(String encryptedText) {
+    public static String decrypt(String encryptedText, String masterPassword) {
+        validateMasterPassword(masterPassword);
         try {
             // 解析加密字符串
             String[] parts = encryptedText.split(":");
@@ -87,7 +87,7 @@ public class CryptoUtils {
             byte[] encryptedBytes = Base64.getDecoder().decode(parts[2]);
 
             // 从主密码和盐值派生密钥
-            SecretKey secretKey = deriveKey(MASTER_PASSWORD, salt);
+            SecretKey secretKey = deriveKey(masterPassword, salt);
 
             // 初始化解密器
             Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -100,6 +100,12 @@ public class CryptoUtils {
 
         } catch (Exception e) {
             throw new RuntimeException("解密失败", e);
+        }
+    }
+
+    private static void validateMasterPassword(String masterPassword) {
+        if (masterPassword == null || masterPassword.length() < 32) {
+            throw new IllegalArgumentException("加密主密钥长度不能少于 32 个字符");
         }
     }
 
@@ -125,9 +131,9 @@ public class CryptoUtils {
      * @param encryptedPassword 数据库中存储的加密密码
      * @return 校验结果
      */
-    public static boolean verifyPassword(String inputPassword, String encryptedPassword) {
+    public static boolean verifyPassword(String inputPassword, String encryptedPassword, String masterPassword) {
         try {
-            String decryptedPassword = decrypt(encryptedPassword);
+            String decryptedPassword = decrypt(encryptedPassword, masterPassword);
             return inputPassword.equals(decryptedPassword);
         } catch (Exception e) {
             return false;
