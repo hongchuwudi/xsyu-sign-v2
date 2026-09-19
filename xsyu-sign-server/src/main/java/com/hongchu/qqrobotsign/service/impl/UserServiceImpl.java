@@ -131,7 +131,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                     "用户不存在: " + username, "FAIL", "SYSTEM", null, System.currentTimeMillis() - start);
             throw new BusinessException("用户不存在,无法续签JWS");
         }
-        if (user.getStuPassword() == null) {
+        if ("ADMIN".equals(user.getRole())) {
+            throw new BusinessException("管理员账号不支持学校 JWS 自动续签");
+        }
+        if (user.getPassword() == null) {
             long duration = System.currentTimeMillis() - start;
             log.warn("用户: {} 无学校密码(短信/扫码登录)，无法自动续签JWS", username);
             if (StringUtils.isNotBlank(user.getEmail())) {
@@ -142,7 +145,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new BusinessException("无学校密码，请用密码方式登录一次以保存");
         }
         String pass = CryptoUtils.decrypt(
-                new String(user.getStuPassword(), StandardCharsets.UTF_8),
+                new String(user.getPassword(), StandardCharsets.UTF_8),
                 credentialEncryptionProperties.getMasterKey());
         CasLoginResult result = XSYULoginUtil.login(user.getUsername(), pass);
         if (result.getErrorType() != CasErrorType.SUCCESS) {
@@ -275,8 +278,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     /** 绑定成功后保存并返回登录信息 */
     private UserLoginVO saveBinding(User user, String casPassword, String jws, String name, String phone) {
+        if ("ADMIN".equals(user.getRole())) {
+            throw new BusinessException("管理员账号不能绑定学校密码");
+        }
         if (casPassword != null) {
-            user.setStuPassword(CryptoUtils.encrypt(
+            user.setPassword(CryptoUtils.encrypt(
                     casPassword, credentialEncryptionProperties.getMasterKey()).getBytes(StandardCharsets.UTF_8));
         }
         if (phone != null) user.setPhone(phone);
@@ -533,7 +539,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         if (phone != null) user.setPhone(phone);
         if (casPassword != null) {
-            user.setStuPassword(CryptoUtils.encrypt(
+            user.setPassword(CryptoUtils.encrypt(
                     casPassword, credentialEncryptionProperties.getMasterKey()).getBytes(StandardCharsets.UTF_8));
         }
         user.setJws(jws);

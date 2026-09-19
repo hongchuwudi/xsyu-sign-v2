@@ -99,7 +99,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
     @Override
     public void refreshUserJws(String username) {
         log.info("service层-给用户续签JWS-username: {}", username);
-        // 复用用户侧续签逻辑（基于 stuPassword）
+        // 复用用户侧续签逻辑（普通用户 password 中保存加密学校密码）
         userService.refreshJws(username);
     }
 
@@ -216,7 +216,7 @@ public class AdminServiceImpl extends ServiceImpl<UserMapper, User> implements I
         User newUser = new User();
         newUser.setUsername(userDTO.getUsername());
         newUser.setName(userDTO.getName() != null ? userDTO.getName() : UserServiceImpl.buildDefaultName(userDTO.getUsername()));
-        newUser.setStuPassword(CryptoUtils.encrypt(
+        newUser.setPassword(CryptoUtils.encrypt(
                 userDTO.getPassword(), credentialEncryptionProperties.getMasterKey())
                 .getBytes(StandardCharsets.UTF_8));
         newUser.setRole("USER");

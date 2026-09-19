@@ -47,14 +47,9 @@ public class User implements Serializable {
     private String username;
 
     /**
-     * 加密密码（PBKDF2 不可逆哈希，仅管理员本地登录用；可空）
+     * 统一密码字段：管理员存 PBKDF2 不可逆哈希；普通用户存 AES-GCM 加密的学校密码；短信/扫码用户为 NULL。
      */
     private byte[] password;
-
-    /**
-     * CAS 密码（AES-GCM 可逆加密，JWS 自动续签需要；短信/扫码登录用户为 NULL）
-     */
-    private byte[] stuPassword;
 
     private String name;
 
