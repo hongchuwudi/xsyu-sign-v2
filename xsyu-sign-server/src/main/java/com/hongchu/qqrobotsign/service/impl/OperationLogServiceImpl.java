@@ -22,29 +22,58 @@ public class OperationLogServiceImpl extends ServiceImpl<OperationLogMapper, Ope
 
     @Override
     public void save(String logType, String operation, String detail, String result, String operator, String ip, Long duration) {
+        saveDetailed(logType, operation, detail, result, operator,
+                null, null, null, null, ip, null, duration);
+    }
+
+    @Override
+    public void saveDetailed(String logType, String operation, String detail, String result, String operator,
+                             Long userId, String username, String userName, String actionMethod,
+                             String ip, String requestUri, Long duration) {
         OperationLog log = new OperationLog();
         log.setLogType(logType);
         log.setOperation(operation);
         log.setDetail(detail);
         log.setResult(result);
         log.setOperator(operator != null ? operator : "SYSTEM");
+        log.setUserId(userId);
+        log.setUsername(username);
+        log.setUserName(userName);
+        log.setActionMethod(actionMethod);
         log.setIp(ip);
+        log.setRequestUri(requestUri);
         log.setDuration(duration != null ? duration : 0L);
         log.setCreatedAt(LocalDateTime.now());
         save(log);
     }
 
     @Override
-    public Page<OperationLogVO> queryPage(int page, int size, LocalDate startDate, LocalDate endDate, String logType) {
+    public Page<OperationLogVO> queryPage(int page, int size, LocalDate startDate, LocalDate endDate,
+                                          String logType, String keyword, String result, String actionMethod) {
         LambdaQueryWrapper<OperationLog> wrapper = new LambdaQueryWrapper<>();
-        if (logType != null && !logType.isEmpty()) {
+        if (logType != null && !logType.isBlank()) {
             wrapper.eq(OperationLog::getLogType, logType);
+        }
+        if (result != null && !result.isBlank()) {
+            wrapper.eq(OperationLog::getResult, result);
+        }
+        if (actionMethod != null && !actionMethod.isBlank()) {
+            wrapper.eq(OperationLog::getActionMethod, actionMethod);
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            String value = keyword.trim();
+            wrapper.and(query -> query
+                    .like(OperationLog::getUsername, value)
+                    .or().like(OperationLog::getUserName, value)
+                    .or().like(OperationLog::getOperation, value)
+                    .or().like(OperationLog::getDetail, value)
+                    .or().like(OperationLog::getIp, value));
         }
         if (startDate != null) {
             wrapper.ge(OperationLog::getCreatedAt, startDate.atStartOfDay());
         }
         if (endDate != null) {
-            wrapper.le(OperationLog::getCreatedAt, endDate.plusDays(1).atStartOfDay());
+            wrapper.lt(OperationLog::getCreatedAt, endDate.plusDays(1).atStartOfDay());
         }
         wrapper.orderByDesc(OperationLog::getCreatedAt);
 

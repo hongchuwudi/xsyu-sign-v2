@@ -32,8 +32,39 @@ public class OperationLog implements Serializable {
     /** 操作人 */
     private String operator;
 
+    /** 目标用户ID快照 */
+    private Long userId;
+
+    /** 目标学号或用户名快照 */
+    private String username;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    /** 目标用户姓名快照 */
+    private String userName;
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    /** 操作方式: PASSWORD / SMS / QR / MANUAL / ADMIN */
+    private String actionMethod;
+
     /** 请求IP */
     private String ip;
+
+    /** 请求路径 */
+    private String requestUri;
 
     /** 执行耗时(ms) */
     private Long duration;

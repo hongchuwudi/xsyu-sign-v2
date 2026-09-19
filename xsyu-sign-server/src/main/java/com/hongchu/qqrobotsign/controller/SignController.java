@@ -103,6 +103,7 @@ public class SignController {
      * 处理单个签到
      * @return 签到结果
      */
+    @LogRecord("用户单项签到")
     @PostMapping("/one")
     public String signOne(@RequestParam(name = "id") String id,
                           @RequestParam(name = "signId") String signId,
